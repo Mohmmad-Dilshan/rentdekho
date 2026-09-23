@@ -1,0 +1,48 @@
+# Architecture
+
+## Approved approach
+
+RentDekho uses a modular monolith: one repository and one deployable Next.js
+application. This keeps development, deployment, and debugging manageable while
+allowing feature boundaries to grow with the product.
+
+Next.js App Router provides routing, server rendering, and future server
+endpoints within that application. Server rendering supports discoverability of
+future public marketplace pages. A separate API service is not needed for the
+foundation. Standard Node.js hosting is supported; the hosting provider remains
+undecided.
+
+## Foundation choices
+
+- **TypeScript with strict checking:** catch incompatible data shapes and unsafe
+  assumptions during development.
+- **Node.js 24 LTS:** use the exact version recorded in `.nvmrc` for consistent
+  local and deployment environments.
+- **npm and `package-lock.json`:** reproduce dependency versions with `npm ci`.
+- **Built-in styling:** a small global stylesheet serves the placeholder. Use
+  CSS Modules when component-specific styles are needed.
+
+## Application boundaries
+
+`src/app` contains the root layout, route pages, and global styles. Components
+remain server-rendered by default; introduce client components only when browser
+interaction requires them.
+
+As features are approved, introduce feature modules and shared components where
+they have a concrete purpose. Keep business rules outside page components. Keep
+future database access and secrets in server-only modules, and validate input at
+server boundaries. Do not create empty modules or speculative abstractions.
+
+## Current scope and deferred decisions
+
+Milestone 1 contains the application scaffold, placeholder homepage, runtime and
+dependency declarations, TypeScript configuration, and setup documentation.
+
+Authentication, property listings, administration, search, payments, database
+integration, and media uploads are not implemented. Linting and CI belong to a
+later milestone.
+
+PostgreSQL and managed object storage are recommendations for future structured
+data and photos. Providers, database tooling, migrations, authentication, hosting,
+and domain rules will be selected in their respective milestones. They add no
+dependencies or service requirements to this scaffold.
