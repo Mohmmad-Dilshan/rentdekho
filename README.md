@@ -5,9 +5,10 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 4: domain and data foundation. The application contains an accessible
-placeholder homepage, quality checks, a lightweight health endpoint, and a
-PostgreSQL/Prisma schema. Product features and external services are not implemented.
+Milestone 5: identity and permissions foundation. The application contains an
+accessible placeholder homepage, quality checks, a lightweight health endpoint, a
+PostgreSQL/Prisma schema, and a minimal email/password authentication flow. Rental
+marketplace features and external services are not implemented.
 
 ## Local setup
 
@@ -20,10 +21,11 @@ From the repository root, install the locked dependencies:
 npm ci
 ```
 
-Copy [`.env.example`](.env.example) to an ignored `.env` file and set `DATABASE_URL`
-to the connection URL for your local PostgreSQL instance. Do not commit credentials.
-The application does not connect to the database until server code imports the Prisma
-client.
+Copy [`.env.example`](.env.example) to an ignored `.env` file. Set `DATABASE_URL` to
+the connection URL for your local PostgreSQL instance, `BETTER_AUTH_SECRET` to a
+strong secret, and `BETTER_AUTH_URL` to the local application origin (normally
+`http://localhost:3000`). Do not commit credentials. `BETTER_AUTH_TRUSTED_ORIGINS`
+is optional and only needed for additional trusted origins.
 
 ## Database foundation
 
@@ -48,6 +50,32 @@ npm run prisma:generate
 
 Use `npm run prisma:migrate:deploy` to apply committed migrations in a deployment
 environment. Never run `prisma migrate dev` against production.
+
+## Identity and permissions foundation
+
+RentDekho uses [Better Auth](https://better-auth.com) with its Prisma adapter for
+email/password accounts and persistent database-backed sessions. Better Auth owns
+password hashing, session cookies, CSRF protection, and session invalidation; this
+project does not implement custom password or token cryptography.
+
+The minimal public flow is available at `/sign-up` and `/sign-in`. `/account` is a
+small protected page that confirms the current server-side session and provides
+sign-out. The Better Auth route is mounted at `/api/auth/[...all]`. It is an
+authentication integration endpoint, not a general product API.
+
+`User` remains the ownership anchor for future listings through `Listing.ownerId`.
+Every newly registered account receives the `TENANT` role at the server/database
+boundary. The role enum also reserves `OWNER`, `BROKER`, and `ADMIN` for future
+approved workflows; registration cannot set a role. Server-only helpers in
+`src/server/auth/authorization.ts` provide `getCurrentUser`, `requireUser`,
+`requireRole`, and `requireListingOwnership` for future server-side operations.
+
+Production requires `BETTER_AUTH_SECRET` and a correct `BETTER_AUTH_URL`. Supply
+both through the hosting environment, never through `NEXT_PUBLIC_*` variables. Keep
+the authentication route on the same origin unless `BETTER_AUTH_TRUSTED_ORIGINS` is
+explicitly configured. Email verification delivery, password-recovery email,
+social login, profile management, and administrative interfaces are intentionally
+not implemented.
 
 ## Development
 
@@ -84,10 +112,13 @@ npm run typecheck
 npm run lint
 npm run format:check
 npm run prisma:validate
+npm test
 ```
 
 The typecheck command generates Next.js route types and runs TypeScript without
 emitting application files. Run these checks separately from the production build.
+`npm test` uses Node.js's built-in test runner and exercises the in-memory
+authentication flow and authorization rules without a PostgreSQL connection.
 
 To apply formatting, run the following command. It writes changes to project files:
 
