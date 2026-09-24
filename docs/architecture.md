@@ -34,6 +34,10 @@ undecided.
 - **Runtime health check:** `GET /api/health` returns HTTP 200 and
   `{ "status": "ok" }` without authentication, a database query, or business
   behavior. It is intended only for process readiness checks.
+- **PostgreSQL and Prisma ORM:** PostgreSQL stores persistent application data;
+  Prisma provides the schema, migrations, generated client, and type-safe server
+  access. The project uses the provider-neutral PostgreSQL connector rather than a
+  managed database service.
 
 ## Application boundaries
 
@@ -45,6 +49,11 @@ As features are approved, introduce feature modules and shared components where
 they have a concrete purpose. Keep business rules outside page components. Keep
 future database access and secrets in server-only modules, and validate input at
 server boundaries. Do not create empty modules or speculative abstractions.
+
+`prisma/schema.prisma` is the source of truth for the data model, including the
+PostgreSQL connection environment variable. Migrations live in `prisma/migrations`.
+`src/server/db/prisma.ts` is the sole database-client boundary and imports
+`server-only`, preventing client components from using database credentials.
 
 ## Current scope and deferred decisions
 
@@ -59,9 +68,40 @@ documents that fact and local `.env*` files remain ignored. `poweredByHeader` is
 disabled in the Next.js configuration, and browser production source maps use the
 framework default of being disabled.
 
-Authentication, property listings, administration, search, payments, database
-integration, and media uploads are not implemented. CI, Git hooks, and testing
-frameworks are not included in this milestone.
+Milestone 4 adds the initial PostgreSQL domain schema. `Listing` is the primary
+rental entity: a future recurring or historical property record can be introduced
+only when the product needs it. A listing belongs to one `User` account, which may
+later represent an owner or broker without imposing an authentication model now.
+Cities and localities support Bhilwara-first operation and later expansion without
+storing exact addresses or coordinates.
+
+`PropertyType` is a reference model rather than an enum so categories such as room,
+1 RK, 1/2/3 BHK, house, flat, portion, and PG can be managed without a schema
+migration. `Amenity` and `ListingAmenity` provide a normalized many-to-many
+relationship. Listing status, furnishing state, and tenant preference are database
+enums. Rent and deposit are integer paise (`BigInt`), never floating point.
+`availableFrom` is a date-only optional field. No reference data or property data is
+seeded in this milestone.
+
+Display names are distinct from canonical identity keys. City and locality writes
+must store lowercase values with leading and trailing whitespace removed in their
+canonical fields; property-type and amenity codes must be uppercase and trimmed.
+Unique constraints use those canonical values, and PostgreSQL `CHECK` constraints
+verify they match the display values or code normalization. The same migration-level
+checks require positive rent and a non-negative deposit when present. Prisma 6 does
+not model `CHECK` constraints in its schema DSL, so the migration documents and
+enforces them directly.
+
+Local development uses an ignored `.env` file containing `DATABASE_URL`. Run
+`prisma migrate dev` only with a real development PostgreSQL database; it creates
+and applies migrations and uses a shadow database. Production applies committed
+migrations with `prisma migrate deploy`. Do not use development migrations in
+production.
+
+Authentication, listing submission or display, administration, search, payments,
+database queries from application routes, media uploads, reviews, chat,
+notifications, analytics, and seed data are not implemented. CI, Git hooks, and
+testing frameworks are not included in this milestone.
 
 PostgreSQL and managed object storage are recommendations for future structured
 data and photos. Providers, database tooling, migrations, authentication, hosting,

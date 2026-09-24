@@ -5,9 +5,9 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 3: deployment baseline. The application contains an accessible
-placeholder homepage, quality checks, and a lightweight health endpoint. Product
-features, external services, and CI are not implemented.
+Milestone 4: domain and data foundation. The application contains an accessible
+placeholder homepage, quality checks, a lightweight health endpoint, and a
+PostgreSQL/Prisma schema. Product features and external services are not implemented.
 
 ## Local setup
 
@@ -20,9 +20,34 @@ From the repository root, install the locked dependencies:
 npm ci
 ```
 
-No environment variables, database, or other external services are required. The
-tracked [`.env.example`](.env.example) records this baseline; do not create or
-commit real credentials.
+Copy [`.env.example`](.env.example) to an ignored `.env` file and set `DATABASE_URL`
+to the connection URL for your local PostgreSQL instance. Do not commit credentials.
+The application does not connect to the database until server code imports the Prisma
+client.
+
+## Database foundation
+
+RentDekho uses PostgreSQL with Prisma ORM. The schema is in
+[`prisma/schema.prisma`](prisma/schema.prisma), and the server-only client boundary
+is in [`src/server/db/prisma.ts`](src/server/db/prisma.ts). Generated Prisma Client
+files are regenerated as needed.
+
+City and locality display names retain their human-readable form alongside required
+canonical lowercase, trimmed keys. Property-type and amenity codes are required to
+be uppercase and trimmed. PostgreSQL check constraints verify this normalization and
+also prevent non-positive rent or negative deposits; Prisma 6 cannot express those
+checks in its schema DSL, so they are maintained in the initial migration SQL.
+
+Create and apply a local development migration only after configuring a real local
+PostgreSQL database:
+
+```sh
+npm run prisma:migrate:dev -- --name initial_domain
+npm run prisma:generate
+```
+
+Use `npm run prisma:migrate:deploy` to apply committed migrations in a deployment
+environment. Never run `prisma migrate dev` against production.
 
 ## Development
 
@@ -47,9 +72,10 @@ npm start
 request [http://localhost:3000/api/health](http://localhost:3000/api/health), which
 returns HTTP 200 with `{ "status": "ok" }`. It does not contact external services.
 
-Deploy to a normal Node.js environment that provides Node.js 24.21.0 and runs
-`npm ci`, `npm run build`, and `npm start`. This repository does not select a
-hosting provider or require platform-specific configuration.
+Deploy to a normal Node.js environment that provides Node.js 24.21.0, a PostgreSQL
+database, and `DATABASE_URL`, then runs `npm ci`, `npm run prisma:migrate:deploy`,
+`npm run build`, and `npm start`. This repository does not select a hosting provider
+or require platform-specific configuration.
 
 ## Validation
 
@@ -57,6 +83,7 @@ hosting provider or require platform-specific configuration.
 npm run typecheck
 npm run lint
 npm run format:check
+npm run prisma:validate
 ```
 
 The typecheck command generates Next.js route types and runs TypeScript without

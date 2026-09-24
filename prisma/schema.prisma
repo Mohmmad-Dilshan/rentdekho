@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  RENTED
+  EXPIRED
+  REJECTED
+  ARCHIVED
+}
+
+enum FurnishingStatus {
+  UNFURNISHED
+  SEMI_FURNISHED
+  FURNISHED
+}
+
+enum TenantPreference {
+  ANY
+  FAMILY
+  BACHELORS
+  FEMALE_ONLY
+  MALE_ONLY
+  STUDENTS
+  WORKING_PROFESSIONALS
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String?   @unique
+  displayName String?
+  listings    Listing[] @relation("ListingOwner")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model City {
+  id             String     @id @default(cuid())
+  name           String
+  canonicalName  String
+  state          String
+  canonicalState String
+  countryCode    String     @default("IN") @db.Char(2)
+  localities     Locality[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([canonicalName, canonicalState, countryCode])
+}
+
+model Locality {
+  id            String    @id @default(cuid())
+  cityId        String
+  name          String
+  canonicalName String
+  city          City      @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  listings      Listing[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([cityId, canonicalName])
+}
+
+model PropertyType {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  label     String
+  listings  Listing[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Amenity {
+  id        String           @id @default(cuid())
+  code      String           @unique
+  label     String
+  listings  ListingAmenity[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model Listing {
+  id                         String           @id @default(cuid())
+  ownerId                    String
+  localityId                 String
+  propertyTypeId             String
+  title                      String
+  description                String?
+  status                     ListingStatus    @default(DRAFT)
+  furnishingStatus           FurnishingStatus @default(UNFURNISHED)
+  tenantPreference           TenantPreference @default(ANY)
+  rentAmountPaise            BigInt
+  securityDepositAmountPaise BigInt?
+  availableFrom              DateTime?        @db.Date
+  owner                      User             @relation("ListingOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  locality                   Locality         @relation(fields: [localityId], references: [id], onDelete: Restrict)
+  propertyType               PropertyType     @relation(fields: [propertyTypeId], references: [id], onDelete: Restrict)
+  amenities                  ListingAmenity[]
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+
+  @@index([ownerId])
+  @@index([localityId])
+  @@index([propertyTypeId])
+  @@index([status, localityId])
+}
+
+model ListingAmenity {
+  listingId String
+  amenityId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  amenity   Amenity @relation(fields: [amenityId], references: [id], onDelete: Restrict)
+
+  @@id([listingId, amenityId])
+  @@index([amenityId])
+}
