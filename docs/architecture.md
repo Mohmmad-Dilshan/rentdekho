@@ -21,6 +21,13 @@ undecided.
 - **npm and `package-lock.json`:** reproduce dependency versions with `npm ci`.
 - **Built-in styling:** a small global stylesheet serves the placeholder. Use
   CSS Modules when component-specific styles are needed.
+- **ESLint:** Next.js Core Web Vitals and TypeScript recommended presets check
+  framework usage and TypeScript code separately from the production build.
+- **Prettier:** standalone formatting commands keep code and documentation
+  consistent. `eslint-config-prettier` disables ESLint rules that could conflict
+  with formatting; Prettier runs separately from ESLint.
+- **Editor consistency:** two-space indentation and LF line endings are recorded
+  in repository configuration for Windows and Linux development.
 
 ## Application boundaries
 
@@ -35,12 +42,14 @@ server boundaries. Do not create empty modules or speculative abstractions.
 
 ## Current scope and deferred decisions
 
-Milestone 1 contains the application scaffold, placeholder homepage, runtime and
-dependency declarations, TypeScript configuration, and setup documentation.
+The foundation contains the application scaffold, placeholder homepage, runtime
+and dependency declarations, TypeScript configuration, and setup documentation.
+Milestone 2 adds linting and formatting guardrails. TypeScript, lint, and formatting
+checks run separately from the production build.
 
 Authentication, property listings, administration, search, payments, database
-integration, and media uploads are not implemented. Linting and CI belong to a
-later milestone.
+integration, and media uploads are not implemented. CI, Git hooks, and testing
+frameworks are not included in this milestone.
 
 PostgreSQL and managed object storage are recommendations for future structured
 data and photos. Providers, database tooling, migrations, authentication, hosting,

@@ -5,14 +5,14 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 1: minimal project scaffold. The application contains an accessible
-placeholder homepage. Product features and external services have not been
-implemented.
+Milestone 2: foundation guardrails. The application contains an accessible
+placeholder homepage, with TypeScript, linting, and formatting checks for continued
+development. Product features, external services, and CI are not implemented.
 
 ## Local setup
 
-Install Node.js 24 LTS using the exact version recorded in [`.nvmrc`](.nvmrc).
-Use npm, which is bundled with Node.js.
+Install Node.js **24.21.0**, recorded in [`.nvmrc`](.nvmrc), and use its bundled
+npm **11.19.0**, also recorded in `package.json`.
 
 From the repository root, install the locked dependencies:
 
@@ -34,13 +34,22 @@ Open [http://localhost:3000](http://localhost:3000). Stop the server with `Ctrl+
 
 ```sh
 npm run typecheck
+npm run lint
+npm run format:check
 npm run build
 npm start
 ```
 
 The typecheck command generates Next.js route types and runs TypeScript without
-emitting application files. The build command creates the production build;
-`npm start` serves that build at [http://localhost:3000](http://localhost:3000).
+emitting application files. Run the typecheck, lint, and formatting checks
+separately from the production build. The build command creates the production
+build; `npm start` serves that build at [http://localhost:3000](http://localhost:3000).
+
+To apply formatting, run the following command. It writes changes to project files:
+
+```sh
+npm run format
+```
 
 On Windows, if PowerShell blocks `npm.ps1`, use `npm.cmd` in place of `npm`
 (for example, `npm.cmd run dev`).
