@@ -28,6 +28,12 @@ undecided.
   with formatting; Prettier runs separately from ESLint.
 - **Editor consistency:** two-space indentation and LF line endings are recorded
   in repository configuration for Windows and Linux development.
+- **Deployment baseline:** standard Node.js hosting runs `npm ci`, `npm run build`,
+  and `npm start`. The application does not depend on a hosting provider, cloud
+  SDK, container runtime, database, or external service.
+- **Runtime health check:** `GET /api/health` returns HTTP 200 and
+  `{ "status": "ok" }` without authentication, a database query, or business
+  behavior. It is intended only for process readiness checks.
 
 ## Application boundaries
 
@@ -46,6 +52,12 @@ The foundation contains the application scaffold, placeholder homepage, runtime
 and dependency declarations, TypeScript configuration, and setup documentation.
 Milestone 2 adds linting and formatting guardrails. TypeScript, lint, and formatting
 checks run separately from the production build.
+
+Milestone 3 adds a portable deployment baseline. Node.js 24.21.0 and npm 11.19.0
+remain required. No environment variable is currently needed; `.env.example`
+documents that fact and local `.env*` files remain ignored. `poweredByHeader` is
+disabled in the Next.js configuration, and browser production source maps use the
+framework default of being disabled.
 
 Authentication, property listings, administration, search, payments, database
 integration, and media uploads are not implemented. CI, Git hooks, and testing
