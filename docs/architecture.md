@@ -128,11 +128,11 @@ uses secure cookie defaults in production. Email delivery, mandatory email
 verification, recovery flows, social providers, profiles, role-management UI, and
 admin capabilities remain deferred.
 
-Listing submission or display, administration, search, payments, media uploads,
-reviews, chat, notifications, analytics, role-management UI, email delivery, and
-seed data are not implemented. The identity foundation has a small Node.js built-in
-test suite that uses Better Auth's in-memory adapter; PostgreSQL integration tests,
-CI, and Git hooks remain deferred.
+Public listing display, search, payments, media uploads, reviews, chat,
+notifications, analytics, role-management UI, email delivery, and seed data are not
+implemented. The identity foundation has a small Node.js built-in test suite that
+uses Better Auth's in-memory adapter; PostgreSQL integration tests, CI, and Git hooks
+remain deferred.
 
 PostgreSQL and managed object storage are recommendations for future structured
 data and photos. Providers, database tooling, migrations, authentication, hosting,
@@ -147,3 +147,18 @@ Prisma transaction for reference checks plus listing and amenity creation. Every
 new listing is forced to `PENDING_REVIEW`; no M6 path can create a published listing.
 The form reads existing reference rows and deliberately does not seed or manage city,
 locality, property-type, or amenity data.
+
+Milestone 7 adds the ADMIN-only moderation boundary. The pending-review queue and
+internal detail route select only listing data, reference labels, amenities, and the
+owner's display name and email; authentication records are never exposed. Dedicated
+approve and reject server actions independently require `ADMIN`, and the moderation
+service repeats that authorization. It maps explicit decisions only to
+`PENDING_REVIEW → PUBLISHED` or `PENDING_REVIEW → REJECTED`.
+
+The Prisma moderation repository uses one conditional update matching both the
+listing ID and `PENDING_REVIEW`. A zero-row update is treated as stale or no longer
+pending, preventing competing reviews from overwriting an earlier decision. The
+update changes only `status`; Prisma updates `updatedAt`. M7 does not retain a
+moderation history or rejection reason; those require a future approved data-model
+decision. `PUBLISHED` is reserved as the state a future public discovery feature may
+query, but M7 exposes no public listing route.

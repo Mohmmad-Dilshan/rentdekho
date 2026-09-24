@@ -5,10 +5,11 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 6: listing submission foundation. The application contains an accessible
+Milestone 7: moderation and publishing foundation. The application contains an accessible
 placeholder homepage, quality checks, a lightweight health endpoint, a
-PostgreSQL/Prisma schema, minimal email/password authentication, and owner-side
-listing submission. Public marketplace features and external services are not implemented.
+PostgreSQL/Prisma schema, minimal email/password authentication, owner-side listing
+submission, and ADMIN-only listing moderation. Public marketplace features and
+external services are not implemented.
 
 ## Local setup
 
@@ -145,3 +146,16 @@ PostgreSQL. It intentionally creates no reference data. If cities, localities, o
 property types have not been provisioned through controlled operations, submission
 is unavailable. Public registration remains `TENANT`; owner and broker roles are
 provisioned outside the application until a future approved role-management flow.
+
+## Moderation and publishing foundation
+
+Only authenticated `ADMIN` accounts can access `/admin/listings` and review a
+pending submission. An administrator can explicitly approve or reject a listing;
+the only M7 transitions are `PENDING_REVIEW` to `PUBLISHED` and
+`PENDING_REVIEW` to `REJECTED`. Each action authorizes the active session on the
+server and conditionally updates only a listing that is still pending, so a stale
+review cannot overwrite an earlier decision.
+
+`PUBLISHED` is the visibility state for a future public discovery milestone. M7
+does not create public listing routes, owner dashboards, rejection reasons, or a
+moderation history.
