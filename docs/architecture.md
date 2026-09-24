@@ -138,3 +138,12 @@ PostgreSQL and managed object storage are recommendations for future structured
 data and photos. Providers, database tooling, migrations, authentication, hosting,
 and domain rules will be selected in their respective milestones. They add no
 dependencies or service requirements to this scaffold.
+
+Milestone 6 adds the owner-side listing-submission boundary at `/listings/new`.
+Only server-side `OWNER` and `BROKER` authorization may create a listing. The
+submission action derives `ownerId` from the authenticated session, ignores mass
+assignment fields, validates server input and database reference IDs, and uses a
+Prisma transaction for reference checks plus listing and amenity creation. Every
+new listing is forced to `PENDING_REVIEW`; no M6 path can create a published listing.
+The form reads existing reference rows and deliberately does not seed or manage city,
+locality, property-type, or amenity data.

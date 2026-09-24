@@ -5,10 +5,10 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 5: identity and permissions foundation. The application contains an
-accessible placeholder homepage, quality checks, a lightweight health endpoint, a
-PostgreSQL/Prisma schema, and a minimal email/password authentication flow. Rental
-marketplace features and external services are not implemented.
+Milestone 6: listing submission foundation. The application contains an accessible
+placeholder homepage, quality checks, a lightweight health endpoint, a
+PostgreSQL/Prisma schema, minimal email/password authentication, and owner-side
+listing submission. Public marketplace features and external services are not implemented.
 
 ## Local setup
 
@@ -131,3 +131,17 @@ On Windows, if PowerShell blocks `npm.ps1`, use `npm.cmd` in place of `npm`
 
 See [the architecture notes](docs/architecture.md) for the approved structure and
 decisions deferred to later milestones.
+
+## Listing submission foundation
+
+Authenticated `OWNER` and `BROKER` accounts can use `/listings/new` to submit a
+rental listing. The server derives ownership from the active session, validates
+every submitted value and reference ID, stores money as integer paise, and always
+creates the listing with `PENDING_REVIEW` status. A browser cannot set `ownerId` or
+publish a listing through this flow.
+
+The form loads existing cities, localities, property types, and amenities from
+PostgreSQL. It intentionally creates no reference data. If cities, localities, or
+property types have not been provisioned through controlled operations, submission
+is unavailable. Public registration remains `TENANT`; owner and broker roles are
+provisioned outside the application until a future approved role-management flow.
