@@ -19,7 +19,7 @@ undecided.
 - **Node.js 24 LTS:** use the exact version recorded in `.nvmrc` for consistent
   local and deployment environments.
 - **npm and `package-lock.json`:** reproduce dependency versions with `npm ci`.
-- **Built-in styling:** a small global stylesheet serves the placeholder. Use
+- **Built-in styling:** a small global stylesheet serves the public marketplace. Use
   CSS Modules when component-specific styles are needed.
 - **ESLint:** Next.js Core Web Vitals and TypeScript recommended presets check
   framework usage and TypeScript code separately from the production build.
@@ -128,7 +128,7 @@ uses secure cookie defaults in production. Email delivery, mandatory email
 verification, recovery flows, social providers, profiles, role-management UI, and
 admin capabilities remain deferred.
 
-Public listing display, search, payments, media uploads, reviews, chat,
+Advanced search, payments, media uploads, reviews, chat,
 notifications, analytics, role-management UI, email delivery, and seed data are not
 implemented. The identity foundation has a small Node.js built-in test suite that
 uses Better Auth's in-memory adapter; PostgreSQL integration tests, CI, and Git hooks
@@ -153,7 +153,7 @@ internal detail route select only listing data, reference labels, amenities, and
 owner's display name and email; authentication records are never exposed. Dedicated
 approve and reject server actions independently require `ADMIN`, and the moderation
 service repeats that authorization. It maps explicit decisions only to
-`PENDING_REVIEW → PUBLISHED` or `PENDING_REVIEW → REJECTED`.
+`PENDING_REVIEW â†’ PUBLISHED` or `PENDING_REVIEW â†’ REJECTED`.
 
 The Prisma moderation repository uses one conditional update matching both the
 listing ID and `PENDING_REVIEW`. A zero-row update is treated as stale or no longer
@@ -162,3 +162,30 @@ update changes only `status`; Prisma updates `updatedAt`. M7 does not retain a
 moderation history or rejection reason; those require a future approved data-model
 decision. `PUBLISHED` is reserved as the state a future public discovery feature may
 query, but M7 exposes no public listing route.
+
+## M8 public discovery
+
+`public-discovery.ts` validates allowlisted URL inputs and cursor shape, bounds
+pages to 12 results plus one lookahead, and coordinates read-only listing access.
+`prisma-public-listings-repository.ts` is a dedicated server-only adapter: discovery,
+detail, filter reference options and sitemap queries enforce PUBLISHED. Explicit
+selects exclude ownership, authentication and moderation data. Detail and metadata
+share the same published-only lookup and not-found behavior.
+
+Pagination uses a validated createdAt/id tuple and a strict less-than keyset
+predicate with descending ordering. The only schema change is a composite index on
+status, createdAt DESC, id DESC. No public write operation exists. Filter options
+come from real reference rows with published listings. Arbitrary query keys cannot
+become Prisma fields. Public routes stay dynamic without caching infrastructure.
+
+The small shared header, footer, filters and text-first cards use global CSS tokens,
+system fonts and mobile-first layouts. Zero inventory and database failures are
+separate states. Contact infrastructure, media and M9 remain deferred. Sitemap uses
+the configured application origin, never an invented domain. Robots excludes private
+areas but authorization continues to be enforced by existing server helpers.
+
+The M8 sitemap contains at most 49,998 published listing URLs plus the homepage and
+rental discovery URL (50,000 URLs total). This bounded single-sitemap implementation
+is sufficient for the initial marketplace, but older entries are omitted above that
+inventory size. Revisit sitemap partitioning before approaching this limit. Current
+inventory size cannot be verified without a configured database connection.

@@ -168,6 +168,7 @@ model Listing {
   @@index([localityId])
   @@index([propertyTypeId])
   @@index([status, localityId])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
 }
 
 model ListingAmenity {

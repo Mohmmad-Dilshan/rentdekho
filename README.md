@@ -5,11 +5,10 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 7: moderation and publishing foundation. The application contains an accessible
-placeholder homepage, quality checks, a lightweight health endpoint, a
-PostgreSQL/Prisma schema, minimal email/password authentication, owner-side listing
-submission, and ADMIN-only listing moderation. Public marketplace features and
-external services are not implemented.
+Milestone 8: public rental discovery. The application includes a Bhilwara-first
+marketplace homepage, published rental browsing and detail pages, URL filters,
+cursor pagination, SEO routes, authentication, owner submission, and ADMIN-only
+moderation. Contact infrastructure and media remain deferred.
 
 ## Local setup
 
@@ -159,3 +158,26 @@ review cannot overwrite an earlier decision.
 `PUBLISHED` is the visibility state for a future public discovery milestone. M7
 does not create public listing routes, owner dashboards, rejection reasons, or a
 moderation history.
+
+## M8 public marketplace
+
+Public server-rendered routes `/`, `/rentals`, and `/rentals/[listingId]` use a
+separate read-only public discovery repository. Every listing read, including
+metadata and sitemap reads, requires `PUBLISHED` and selects no owner or auth data.
+Unknown query parameters are ignored; malformed or duplicate values normalize to
+no filter. Locality and property type use reference IDs from published inventory.
+Discovery fetches 13 records for a 12-item page, ordered by createdAt DESC, id DESC.
+A validated base64url date/ID cursor implements a keyset predicate without offsets.
+
+M8 adds only the Listing(status, createdAt, id) index, via migration
+`20260926000000_add_public_listing_discovery_index`. Apply using the existing
+migration deployment workflow. No records are seeded. Empty inventory has an honest
+empty state; database errors have a separate retry state. Contact and images remain
+unavailable. Public pages are dynamic, with system fonts and responsive text cards.
+Sitemap URLs use the configured BETTER_AUTH_URL origin; without it the sitemap is
+empty. No production origin or canonical URL is assumed. Robots excludes internal,
+auth and admin paths; robots is not an access-control mechanism.
+
+Run `npm test` for mock-based public boundary coverage alongside M5â€“M7 tests.
+A real configured PostgreSQL database is required for successful marketplace smoke
+tests and migration application. No M9 features are included.
