@@ -18,11 +18,6 @@ export type ModerationActionState = {
   message: string | null;
 };
 
-export const initialModerationActionState: ModerationActionState = {
-  error: null,
-  message: null,
-};
-
 async function applyModeration(
   formData: FormData,
   decision: "APPROVE" | "REJECT",

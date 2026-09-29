@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { initialListingFormState, submitListing } from "./actions";
+import { submitListing, type ListingFormState } from "./actions";
+
+const initialListingFormState: ListingFormState = {
+  errors: {},
+  formError: null,
+};
 
 type City = { id: string; name: string; state: string };
 type Locality = { id: string; cityId: string; name: string };
@@ -122,7 +127,7 @@ export function ListingForm({
             id="rent"
             name="rent"
             inputMode="decimal"
-            pattern="\\d+(\\.\\d{1,2})?"
+            pattern="(?=.*[1-9])\d+(\.\d{1,2})?"
             required
           />
           <FieldError message={state.errors.rent} />
@@ -133,7 +138,7 @@ export function ListingForm({
             id="securityDeposit"
             name="securityDeposit"
             inputMode="decimal"
-            pattern="\\d+(\\.\\d{1,2})?"
+            pattern="\d+(\.\d{1,2})?"
           />
           <FieldError message={state.errors.securityDeposit} />
         </p>

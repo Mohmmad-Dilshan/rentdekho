@@ -3,9 +3,14 @@
 import { useActionState } from "react";
 import {
   approveListing,
-  initialModerationActionState,
   rejectListing,
+  type ModerationActionState,
 } from "./actions";
+
+const initialModerationActionState: ModerationActionState = {
+  error: null,
+  message: null,
+};
 
 export function ModerationActions({ listingId }: { listingId: string }) {
   const [approveState, approveAction, isApproving] = useActionState(

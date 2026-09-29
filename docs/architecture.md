@@ -205,3 +205,17 @@ result. This is compatible with the existing conditional admin moderation update
 only one of competing transitions can win. Public discovery, detail and sitemap
 continue to use PUBLISHED-only queries. M9 adds no migration, editing, reopening,
 or contact/lead flow.
+
+## M10 production listing pipeline reliability
+
+Submission and moderation initial-state objects are defined in their client
+components, so their `"use server"` modules expose only async actions at runtime.
+Their existing state types remain type-only exports. Submission's HTML money
+patterns use literal regex backslashes in JSX attributes; the unchanged service
+continues validating money, roles and reference relationships on the server.
+
+Action regressions exercise the installed Next.js runtime export validator.
+The opt-in production Chrome/PostgreSQL pipeline test exercises actual routes,
+browser validity, authorized and tampered requests, conditional moderation races,
+and public visibility through the existing M9 lifecycle. It cleans up its unique
+fixtures. M10 adds no schema, migration, dependency or lifecycle transition.

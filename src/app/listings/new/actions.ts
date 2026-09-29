@@ -19,11 +19,6 @@ export type ListingFormState = {
   formError: string | null;
 };
 
-export const initialListingFormState: ListingFormState = {
-  errors: {},
-  formError: null,
-};
-
 export async function submitListing(
   _previousState: ListingFormState,
   formData: FormData,

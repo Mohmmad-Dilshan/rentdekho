@@ -117,8 +117,10 @@ npm test
 
 The typecheck command generates Next.js route types and runs TypeScript without
 emitting application files. Run these checks separately from the production build.
-`npm test` uses Node.js's built-in test runner and exercises the in-memory
-authentication flow and authorization rules without a PostgreSQL connection.
+`npm test` uses Node.js's built-in test runner for service/action regressions and
+the PostgreSQL owner-lifecycle suite. The latter loads the ignored `.env` when
+needed and skips if `DATABASE_URL` is absent; configure a disposable development
+database to exercise it.
 
 To apply formatting, run the following command. It writes changes to project files:
 
@@ -191,3 +193,34 @@ published listing. These changes are final in M9. Each action checks the session
 role, ownership, and source status in one conditional database update. A listing
 that becomes RENTED or ARCHIVED is no longer public. Other statuses have no M9
 action. No schema change or new dependency is needed.
+
+## M10 listing pipeline regression checks
+
+Submission and moderation `"use server"` modules export async actions and erased
+types only. Initial UI state lives in the consuming client component. Money
+inputs accept unsigned integers or decimals with one or two fractional digits;
+rent is required and must be positive on the server, while an empty deposit is
+stored as null. Server validation remains authoritative.
+
+`npm test` includes `tests/listing-actions.test.mjs`, which imports the action
+source with boundary doubles, runs the installed Next.js export validator, and
+checks server authorization and invalid-input rejection.
+
+Run `npm run test:pipeline:browser` separately against a local **production**
+server built with `npm run build`. It requires the same disposable PostgreSQL
+database as the server, valid process/local authentication configuration, Chrome,
+and an already available Playwright installation. No browser package is added to
+the project's dependencies. Set these process variables before running it:
+
+- `M10_BASE_URL`: the local server origin, for example `http://localhost:3109`.
+- `M10_PLAYWRIGHT_MODULE`: a file URL to the existing Playwright `index.mjs`.
+- `M10_CHROME_EXECUTABLE`: optional Chrome path; the default is the standard
+  Windows Chrome installation.
+
+The browser test exercises actual HTML input validity, OWNER/BROKER submission,
+ADMIN approval/rejection, unauthorized action requests, competing moderation,
+public detail/discovery/metadata/sitemap visibility, and M9 terminal actions on
+desktop and 375px mobile. It creates uniquely identified disposable users,
+references and listings, then removes them in `finally`, including cascaded
+authentication records. Never run it against production data. Without its
+prerequisites the opt-in command fails rather than silently passing.
