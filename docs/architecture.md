@@ -219,3 +219,22 @@ The opt-in production Chrome/PostgreSQL pipeline test exercises actual routes,
 browser validity, authorized and tampered requests, conditional moderation races,
 and public visibility through the existing M9 lifecycle. It cleans up its unique
 fixtures. M10 adds no schema, migration, dependency or lifecycle transition.
+
+## M11 controlled supply provisioning
+
+`scripts/operator-provision.mjs` is a privileged host CLI, backed by the server-only
+`src/server/provisioning/operator-provisioning.mjs` service. Host/database credential
+access is the operator authority; the explicit acknowledgement flag is not an
+application authorization mechanism. No route or client imports this service.
+
+Existing TENANT accounts can become OWNER or BROKER, with same-role no-ops and
+conditional source-role/timestamp updates. ADMIN and cross-supplier transitions are
+refused. Reference catalogs contain only the four existing models; PostgreSQL itself
+normalizes canonical keys using the existing constraint expressions. Read-only dry
+runs produce a digest of the plan; apply verifies it in a serializable transaction
+before creating missing records. Matching rows are reused; conflicts are refused.
+No reference updates/deletes, schema changes or new dependencies are introduced.
+
+See [the operator guide](operator-provisioning.md) for the input contract, execution
+records, separately controlled initial-ADMIN bootstrap and disposable integration
+testing. Public registration and all existing listing flows remain unchanged.

@@ -10,6 +10,11 @@ marketplace homepage, published rental browsing and detail pages, URL filters,
 cursor pagination, SEO routes, authentication, owner submission, and ADMIN-only
 moderation. Contact infrastructure and media remain deferred.
 
+M11 adds host-only supplier and reference-data provisioning. See the
+[operator guide](docs/operator-provisioning.md) for authority, reviewed dry runs,
+transactional apply, the JSON contract and separate initial-ADMIN bootstrap.
+No public role management or reference-data dashboard is introduced.
+
 ## Local setup
 
 Install Node.js **24.21.0**, recorded in [`.nvmrc`](.nvmrc), and use its bundled
