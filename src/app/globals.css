@@ -281,6 +281,22 @@ dt {
   margin-top: 2rem;
   border-radius: 0.5rem;
 }
+.owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.owner-action-form {
+  min-width: min(100%, 12rem);
+}
+.owner-action-form p {
+  margin-top: 0.5rem;
+  color: #9b2525;
+}
+.owner-action-form button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
 @media (min-width: 48rem) {
   .rental-filters {
     grid-template-columns: 1fr 1fr auto;

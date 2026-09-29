@@ -181,3 +181,13 @@ auth and admin paths; robots is not an access-control mechanism.
 Run `npm test` for mock-based public boundary coverage alongside M5â€“M7 tests.
 A real configured PostgreSQL database is required for successful marketplace smoke
 tests and migration application. No M9 features are included.
+
+## M9 owner listing management
+
+Authenticated OWNER and BROKER accounts can open `/my/listings` from `/account`
+to see up to 25 of their newest listings and view their own listing details.
+They can mark a published listing rented or withdraw a pending-review or
+published listing. These changes are final in M9. Each action checks the session,
+role, ownership, and source status in one conditional database update. A listing
+that becomes RENTED or ARCHIVED is no longer public. Other statuses have no M9
+action. No schema change or new dependency is needed.

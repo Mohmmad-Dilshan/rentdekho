@@ -189,3 +189,19 @@ rental discovery URL (50,000 URLs total). This bounded single-sitemap implementa
 is sufficient for the initial marketplace, but older entries are omitted above that
 inventory size. Revisit sitemap partitioning before approaching this limit. Current
 inventory size cannot be verified without a configured database connection.
+
+## M9 owner listing management
+
+`owner-management.ts` defines owner/broker role checks, listing-ID validation and
+the two allowed actions. `prisma-owner-listings-repository.ts` uses explicit
+private selects and scopes every read and write to the authenticated `ownerId`.
+The `/my/listings` pages derive identity only from the session. A non-owned or
+missing detail uses the same not-found response.
+
+The only owner transitions are PUBLISHED to RENTED and PENDING_REVIEW or
+PUBLISHED to ARCHIVED. An atomic conditional update includes listing ID,
+owner ID and permitted source status. A zero-row update is a stale or unavailable
+result. This is compatible with the existing conditional admin moderation update:
+only one of competing transitions can win. Public discovery, detail and sitemap
+continue to use PUBLISHED-only queries. M9 adds no migration, editing, reopening,
+or contact/lead flow.
