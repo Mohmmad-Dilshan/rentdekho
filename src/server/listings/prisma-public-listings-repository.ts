@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type {
   PublicDiscoveryFilters,
+  PublicListingDetailView,
   PublicListingRepository,
   PublicListingView,
 } from "./public-discovery";
@@ -21,6 +22,29 @@ const publicListingSelect = {
   propertyType: { select: { label: true } },
   amenities: { select: { amenity: { select: { label: true } } } },
 } satisfies Prisma.ListingSelect;
+
+const publicListingDetailSelect = {
+  ...publicListingSelect,
+  contactPhone: true,
+  contactConsentAt: true,
+} satisfies Prisma.ListingSelect;
+
+function toPublicListingDetailView(
+  listing: Prisma.ListingGetPayload<{
+    select: typeof publicListingDetailSelect;
+  }>,
+): PublicListingDetailView {
+  const { contactPhone, contactConsentAt, ...base } = listing;
+  return {
+    ...toPublicListingView(base),
+    contactPhone:
+      contactConsentAt &&
+      contactPhone &&
+      /^\+91[6-9][0-9]{9}$/.test(contactPhone)
+        ? contactPhone
+        : null,
+  };
+}
 
 function toPublicListingView(
   listing: Prisma.ListingGetPayload<{ select: typeof publicListingSelect }>,
@@ -60,10 +84,10 @@ export function createPrismaPublicListingRepository(
     async findPublishedListingById(id) {
       const listing = await prisma.listing.findFirst({
         where: { id, status: "PUBLISHED" },
-        select: publicListingSelect,
+        select: publicListingDetailSelect,
       });
 
-      return listing ? toPublicListingView(listing) : null;
+      return listing ? toPublicListingDetailView(listing) : null;
     },
     async findPublicDiscoveryFilters(): Promise<PublicDiscoveryFilters> {
       const [localities, propertyTypes] = await Promise.all([

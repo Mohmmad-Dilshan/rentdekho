@@ -238,3 +238,19 @@ No reference updates/deletes, schema changes or new dependencies are introduced.
 See [the operator guide](operator-provisioning.md) for the input contract, execution
 records, separately controlled initial-ADMIN bootstrap and disposable integration
 testing. Public registration and all existing listing flows remain unchanged.
+
+## M12 consented listing contact
+
+Two nullable Listing fields store a normalized listing-specific contact phone and a
+server-recorded consent timestamp. The additive migration leaves existing listings
+with NULL values and adds checks for the canonical Indian mobile form and for consent
+requiring a number. The unchanged submission transaction derives ownership and
+PENDING_REVIEW status from server authority; it validates both fields before creation.
+ADMIN review sees the submitted number and consent, without claiming verification.
+
+The public repository continues to require PUBLISHED at the query boundary. Only its
+detail select includes the contact columns; its mapper emits a phone only when consent
+and canonical format are present, stripping the consent timestamp. Discovery, sitemap
+and metadata never emit phone data. Existing owner status transitions remove public
+detail access and therefore the call action. No new lifecycle transition, contact edit,
+API endpoint, external integration or dependency is introduced.

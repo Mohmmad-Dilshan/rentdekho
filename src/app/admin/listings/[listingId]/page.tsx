@@ -54,6 +54,8 @@ export default async function AdminListingReviewPage({
       status: true,
       rentAmountPaise: true,
       securityDepositAmountPaise: true,
+      contactPhone: true,
+      contactConsentAt: true,
       availableFrom: true,
       furnishingStatus: true,
       tenantPreference: true,
@@ -110,11 +112,21 @@ export default async function AdminListingReviewPage({
         <dd>
           {listing.owner.displayName} ({listing.owner.email})
         </dd>
+        <dt>Supplier-provided contact</dt>
+        <dd>{listing.contactPhone ?? "Not provided"}</dd>
+        <dt>Consent to public contact display</dt>
+        <dd>
+          {listing.contactConsentAt ? "Given for this listing" : "Not given"}
+        </dd>
         <dt>Submitted</dt>
         <dd>{formatDate(listing.createdAt)}</dd>
         <dt>Last updated</dt>
         <dd>{formatDate(listing.updatedAt)}</dd>
       </dl>
+      <p>
+        Approval reviews this listing; it does not verify ownership of the
+        contact number.
+      </p>
       {listing.status === "PENDING_REVIEW" ? (
         <ModerationActions listingId={listing.id} />
       ) : (

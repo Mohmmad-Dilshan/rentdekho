@@ -140,7 +140,12 @@ test(
     async function fillListing(
       page,
       title,
-      { rent = "12500.50", deposit = "25000.25" } = {},
+      {
+        rent = "12500.50",
+        deposit = "25000.25",
+        contact = "9876543210",
+        consent = true,
+      } = {},
     ) {
       assert.equal((await page.goto(`${origin}/listings/new`)).status(), 200);
       await page.locator('[name="cityId"]').selectOption(cityId);
@@ -154,6 +159,8 @@ test(
         .fill("M10 temporary integration description");
       await page.locator('[name="rent"]').fill(rent);
       await page.locator('[name="securityDeposit"]').fill(deposit);
+      await page.locator('[name="contactPhone"]').fill(contact);
+      if (consent) await page.locator('[name="contactConsent"]').check();
       await page.locator('[name="availableFrom"]').fill("2026-10-01");
       await page
         .locator('[name="furnishingStatus"]')
@@ -209,6 +216,14 @@ test(
       );
       assert.equal(listing.furnishingStatus, "SEMI_FURNISHED");
       assert.equal(listing.tenantPreference, "FAMILY");
+      assert.equal(
+        listing.contactPhone,
+        amounts?.contact === "" ? null : "+919876543210",
+      );
+      assert.equal(
+        Boolean(listing.contactConsentAt),
+        amounts?.consent !== false,
+      );
       assert.deepEqual(
         listing.amenities.map((item) => item.amenityId),
         [amenityId],
@@ -225,6 +240,15 @@ test(
         200,
       );
       await noOverflow(admin.page);
+      const review = await admin.page.locator("body").innerText();
+      assert.ok(review.includes("Supplier-provided contact"));
+      assert.ok(review.includes(listing.contactPhone ?? "Not provided"));
+      assert.ok(
+        review.includes(
+          listing.contactConsentAt ? "Given for this listing" : "Not given",
+        ),
+      );
+      assert.ok(review.includes("does not verify ownership"));
       await admin.page
         .getByRole("button", {
           name:
@@ -417,6 +441,58 @@ test(
       const raced = await submit(broker, "moderation race");
       await moderate(admin, rented, "APPROVE");
       await moderate(admin, rejected, "REJECT");
+
+      await t.test(
+        "consented public call action works on desktop and 375px mobile",
+        async () => {
+          for (const width of [1280, 375]) {
+            const page = await anonymous.newPage();
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(`${origin}/rentals/${rented.id}`);
+            const call = page.getByRole("link", {
+              name: /Call listing contact at/,
+            });
+            assert.equal(await call.getAttribute("href"), "tel:+919876543210");
+            const box = await call.boundingBox();
+            assert.ok(box.width >= 44 && box.height >= 44);
+            assert.match(
+              await page.locator("body").innerText(),
+              /has not verified who owns it/,
+            );
+            await noOverflow(page);
+            await page.close();
+          }
+        },
+      );
+      const unavailable = await submit(owner, "contact unavailable", {
+        contact: "",
+        consent: false,
+      });
+      await moderate(admin, unavailable, "APPROVE");
+      const unconsented = await submit(broker, "contact unconsented", {
+        consent: false,
+      });
+      await moderate(admin, unconsented, "APPROVE");
+      await t.test(
+        "published missing and unconsented contact stay unavailable on desktop and mobile",
+        async () => {
+          for (const [listing, width] of [
+            [unavailable, 1280],
+            [unconsented, 375],
+          ]) {
+            const page = await anonymous.newPage();
+            await page.setViewportSize({ width, height: 900 });
+            await page.goto(`${origin}/rentals/${listing.id}`);
+            assert.match(
+              await page.locator("body").innerText(),
+              /Contact is unavailable for this listing/,
+            );
+            assert.equal(await page.locator('a[href^="tel:"]').count(), 0);
+            await noOverflow(page);
+            await page.close();
+          }
+        },
+      );
 
       await t.test(
         "non-admin actions cannot approve another owner's pending listing",

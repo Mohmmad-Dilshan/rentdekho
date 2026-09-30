@@ -113,7 +113,23 @@ export default async function RentalDetailPage({
         </section>
         <section className="contact-note" aria-labelledby="contact-heading">
           <h2 id="contact-heading">Contact</h2>
-          <p>Contact options are not available in this initial release.</p>
+          {listing.contactPhone ? (
+            <>
+              <p>
+                This number was supplied for this listing. RentDekho has not
+                verified who owns it.
+              </p>
+              <a
+                className="button"
+                href={`tel:${listing.contactPhone}`}
+                aria-label={`Call listing contact at ${listing.contactPhone}`}
+              >
+                Call {listing.contactPhone}
+              </a>
+            </>
+          ) : (
+            <p>Contact is unavailable for this listing.</p>
+          )}
         </section>
       </article>
     </main>

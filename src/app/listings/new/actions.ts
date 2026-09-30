@@ -35,6 +35,8 @@ export async function submitListing(
         description: String(formData.get("description") ?? ""),
         rent: String(formData.get("rent") ?? ""),
         securityDeposit: String(formData.get("securityDeposit") ?? ""),
+        contactPhone: String(formData.get("contactPhone") ?? ""),
+        contactConsent: String(formData.get("contactConsent") ?? ""),
         availableFrom: String(formData.get("availableFrom") ?? ""),
         furnishingStatus: String(formData.get("furnishingStatus") ?? ""),
         tenantPreference: String(formData.get("tenantPreference") ?? ""),

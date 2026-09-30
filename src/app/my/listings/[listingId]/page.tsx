@@ -100,6 +100,18 @@ export default async function MyListingDetailPage({
             </dd>
           </div>
           <div>
+            <dt>Listing contact</dt>
+            <dd>{listing.contactPhone ?? "Not provided"}</dd>
+          </div>
+          <div>
+            <dt>Public contact consent</dt>
+            <dd>
+              {listing.contactConsentAt
+                ? "Given for this listing"
+                : "Not given"}
+            </dd>
+          </div>
+          <div>
             <dt>Furnishing</dt>
             <dd>{listing.furnishingStatus.replaceAll("_", " ")}</dd>
           </div>

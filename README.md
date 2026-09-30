@@ -229,3 +229,25 @@ desktop and 375px mobile. It creates uniquely identified disposable users,
 references and listings, then removes them in `finally`, including cascaded
 authentication records. Never run it against production data. Without its
 prerequisites the opt-in command fails rather than silently passing.
+
+## M12 consented listing contact
+
+During listing submission, an OWNER or BROKER may provide a listing-specific Indian
+mobile number and separately consent to its public display. Enter ten digits beginning
+with 6–9, optionally prefixed by `+91`; the server stores the normalized `+91` form.
+The server rejects malformed numbers and consent without a valid number. A valid
+number without consent remains private. ADMIN can see the submitted number and consent
+while reviewing the pending listing. Approval does **not** verify ownership of the
+number, the supplier, the property, or availability.
+
+Only a `PUBLISHED` listing with consent and a valid stored number shows a call link
+on its public detail page. Other statuses, discovery cards, metadata and sitemap
+never expose contact. Existing listings have no fabricated number and honestly show
+contact unavailable. Contact can attract unsolicited calls because it is public.
+Suppliers should use a number they are authorized and willing to publish.
+
+There is no post-publication contact editing in M12. If a published number is wrong,
+the supplier must withdraw that listing and submit a corrected listing for review;
+an operator can assist. There is no WhatsApp, chat, lead inbox or phone verification.
+Apply the committed M12 migration with the existing migration deployment workflow.
+Passing M12 validation does not establish production launch readiness.

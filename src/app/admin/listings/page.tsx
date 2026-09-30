@@ -49,6 +49,8 @@ export default async function AdminListingsPage() {
       status: true,
       rentAmountPaise: true,
       securityDepositAmountPaise: true,
+      contactPhone: true,
+      contactConsentAt: true,
       availableFrom: true,
       furnishingStatus: true,
       tenantPreference: true,
@@ -107,6 +109,10 @@ export default async function AdminListingsPage() {
                   <dd>
                     {listing.owner.displayName} ({listing.owner.email})
                   </dd>
+                  <dt>Supplier-provided contact</dt>
+                  <dd>{listing.contactPhone ?? "Not provided"}</dd>
+                  <dt>Consent to public contact display</dt>
+                  <dd>{listing.contactConsentAt ? "Given" : "Not given"}</dd>
                   <dt>Submitted</dt>
                   <dd>{formatDate(listing.createdAt)}</dd>
                 </dl>

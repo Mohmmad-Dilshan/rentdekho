@@ -60,6 +60,10 @@ export type PublicListingView = {
   amenities: PublicListingAmenity[];
 };
 
+export type PublicListingDetailView = PublicListingView & {
+  contactPhone: string | null;
+};
+
 export type PublicDiscoveryFilters = {
   localities: { id: string; name: string; cityName: string }[];
   propertyTypes: { id: string; label: string }[];
@@ -72,7 +76,7 @@ export type PublicListingRepository = {
     cursor?: PublicCursor;
     take: number;
   }): Promise<PublicListingView[]>;
-  findPublishedListingById(id: string): Promise<PublicListingView | null>;
+  findPublishedListingById(id: string): Promise<PublicListingDetailView | null>;
   findPublicDiscoveryFilters(): Promise<PublicDiscoveryFilters>;
   findPublishedSitemapEntries(): Promise<{ id: string; updatedAt: Date }[]>;
 };

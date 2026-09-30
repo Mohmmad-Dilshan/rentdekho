@@ -31,6 +31,8 @@ export type ListingSubmissionInput = {
   description?: string;
   rent: string;
   securityDeposit?: string;
+  contactPhone?: string;
+  contactConsent?: string;
   availableFrom?: string;
   furnishingStatus?: string;
   tenantPreference?: string;
@@ -65,6 +67,8 @@ type ValidatedListingSubmission = {
   description: string | null;
   rentAmountPaise: bigint;
   securityDepositAmountPaise: bigint | null;
+  contactPhone: string | null;
+  contactConsentAt: Date | null;
   availableFrom: Date | null;
   furnishingStatus: FurnishingStatus;
   tenantPreference: TenantPreference;
@@ -112,6 +116,12 @@ function parsePaise(value: string, field: "rent" | "securityDeposit") {
   return BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0"));
 }
 
+export function normalizeIndianContactPhone(value: string): string | null {
+  const trimmed = value.trim();
+  const digits = trimmed.startsWith("+91") ? trimmed.slice(3) : trimmed;
+  return /^[6-9][0-9]{9}$/.test(digits) ? `+91${digits}` : null;
+}
+
 function parseDateOnly(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return null;
@@ -143,6 +153,26 @@ function validateSubmission(
   const furnishingStatus = input.furnishingStatus || "UNFURNISHED";
   const tenantPreference = input.tenantPreference || "ANY";
   const amenityIds = input.amenityIds ?? [];
+  const rawContact = input.contactPhone ?? "";
+  const rawConsent = input.contactConsent ?? "";
+  const contactPhone = rawContact.trim()
+    ? normalizeIndianContactPhone(rawContact)
+    : null;
+  if (rawContact.trim() && !contactPhone)
+    errors.push({
+      field: "contactPhone",
+      message: "Enter a valid Indian mobile number.",
+    });
+  if (rawConsent !== "" && rawConsent !== "on")
+    errors.push({
+      field: "contactConsent",
+      message: "Choose a valid contact consent option.",
+    });
+  if (rawConsent === "on" && !contactPhone)
+    errors.push({
+      field: "contactConsent",
+      message: "A valid contact number is required for public display.",
+    });
 
   if (!cityId) errors.push({ field: "cityId", message: "Choose a city." });
   if (!localityId)
@@ -239,6 +269,8 @@ function validateSubmission(
     description,
     rentAmountPaise,
     securityDepositAmountPaise,
+    contactPhone,
+    contactConsentAt: rawConsent === "on" && contactPhone ? new Date() : null,
     availableFrom,
     furnishingStatus,
     tenantPreference,

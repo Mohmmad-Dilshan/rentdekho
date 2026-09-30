@@ -12,6 +12,8 @@ const ownerListingSelect = {
   status: true,
   rentAmountPaise: true,
   securityDepositAmountPaise: true,
+  contactPhone: true,
+  contactConsentAt: true,
   availableFrom: true,
   furnishingStatus: true,
   tenantPreference: true,

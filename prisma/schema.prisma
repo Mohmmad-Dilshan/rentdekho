@@ -156,6 +156,8 @@ model Listing {
   tenantPreference           TenantPreference @default(ANY)
   rentAmountPaise            BigInt
   securityDepositAmountPaise BigInt?
+  contactPhone               String?
+  contactConsentAt           DateTime?
   availableFrom              DateTime?        @db.Date
   owner                      User             @relation("ListingOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   locality                   Locality         @relation(fields: [localityId], references: [id], onDelete: Restrict)

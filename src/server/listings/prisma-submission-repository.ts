@@ -44,6 +44,8 @@ function createTransaction(
           tenantPreference: input.tenantPreference,
           rentAmountPaise: input.rentAmountPaise,
           securityDepositAmountPaise: input.securityDepositAmountPaise,
+          contactPhone: input.contactPhone,
+          contactConsentAt: input.contactConsentAt,
           availableFrom: input.availableFrom,
           amenities: {
             create: input.amenityIds.map((amenityId) => ({ amenityId })),

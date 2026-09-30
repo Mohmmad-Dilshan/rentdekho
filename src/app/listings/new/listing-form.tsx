@@ -202,6 +202,45 @@ export function ListingForm({
         </fieldset>
       </section>
 
+      <section aria-labelledby="listing-contact-heading">
+        <h2 id="listing-contact-heading">Contact for this listing</h2>
+        <p>
+          Provide a number that tenants may call. RentDekho does not verify
+          ownership of this number.
+        </p>
+        <p>
+          <label htmlFor="contactPhone">Indian mobile number</label>
+          <input
+            id="contactPhone"
+            name="contactPhone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            maxLength={13}
+            pattern="(\+91)?[6-9][0-9]{9}"
+            placeholder="10 digits or +91 followed by 10 digits"
+          />
+          <FieldError message={state.errors.contactPhone} />
+        </p>
+        <p>
+          <input
+            id="contactConsent"
+            name="contactConsent"
+            type="checkbox"
+            value="on"
+          />
+          <label htmlFor="contactConsent">
+            I consent to publicly displaying the phone number for this listing
+            after ADMIN approval.
+          </label>
+          <FieldError message={state.errors.contactConsent} />
+        </p>
+        <p>
+          Without consent, any number supplied remains private and tenants
+          cannot call through this listing.
+        </p>
+      </section>
+
       {state.formError ? <p role="alert">{state.formError}</p> : null}
       <button type="submit" disabled={isPending}>
         {isPending ? "Submitting…" : "Submit listing"}

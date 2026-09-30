@@ -15,6 +15,8 @@ export type ManagedListing = {
   status: string;
   rentAmountPaise: bigint;
   securityDepositAmountPaise: bigint | null;
+  contactPhone: string | null;
+  contactConsentAt: Date | null;
   availableFrom: Date | null;
   furnishingStatus: string;
   tenantPreference: string;

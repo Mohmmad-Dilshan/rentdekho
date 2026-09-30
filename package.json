@@ -16,7 +16,7 @@
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test tests/auth-foundation.test.mjs tests/listing-submission.test.mjs tests/listing-moderation.test.mjs tests/public-discovery.test.mjs tests/owner-management.test.mjs tests/owner-management-db.test.mjs tests/listing-actions.test.mjs && npm run test:provisioning",
+    "test": "node --test --test-concurrency=1 tests/auth-foundation.test.mjs tests/listing-submission.test.mjs tests/listing-moderation.test.mjs tests/public-discovery.test.mjs tests/owner-management.test.mjs tests/owner-management-db.test.mjs tests/listing-actions.test.mjs tests/listing-contact.test.mjs tests/listing-contact-db.test.mjs && npm run test:provisioning",
     "test:provisioning": "node --conditions=react-server --test tests/operator-provisioning.test.mjs tests/operator-provisioning-db.test.mjs",
     "operator:provision": "node --conditions=react-server scripts/operator-provision.mjs",
     "test:pipeline:browser": "node --test tests/listing-pipeline-browser.test.mjs",
