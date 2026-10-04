@@ -39,6 +39,26 @@ export type ListingSubmissionInput = {
   amenityIds?: string[];
 };
 
+export function listingInputFromFormData(
+  formData: FormData,
+): ListingSubmissionInput {
+  return {
+    cityId: String(formData.get("cityId") ?? ""),
+    localityId: String(formData.get("localityId") ?? ""),
+    propertyTypeId: String(formData.get("propertyTypeId") ?? ""),
+    title: String(formData.get("title") ?? ""),
+    description: String(formData.get("description") ?? ""),
+    rent: String(formData.get("rent") ?? ""),
+    securityDeposit: String(formData.get("securityDeposit") ?? ""),
+    contactPhone: String(formData.get("contactPhone") ?? ""),
+    contactConsent: String(formData.get("contactConsent") ?? ""),
+    availableFrom: String(formData.get("availableFrom") ?? ""),
+    furnishingStatus: String(formData.get("furnishingStatus") ?? ""),
+    tenantPreference: String(formData.get("tenantPreference") ?? ""),
+    amenityIds: formData.getAll("amenityIds").map(String),
+  };
+}
+
 export type ListingCreator = {
   id: string;
   role: UserRole;
@@ -59,7 +79,7 @@ export class ListingSubmissionValidationError extends Error {
   }
 }
 
-type ValidatedListingSubmission = {
+export type ValidatedListingSubmission = {
   cityId: string;
   localityId: string;
   propertyTypeId: string;
@@ -141,7 +161,7 @@ function isValueIn<T extends readonly string[]>(
   return values.includes(value);
 }
 
-function validateSubmission(
+export function validateSubmission(
   input: ListingSubmissionInput,
 ): ValidatedListingSubmission {
   const errors: ListingSubmissionError[] = [];
@@ -292,41 +312,50 @@ export async function createListingSubmission(
   const listing = validateSubmission(input);
 
   return repository.transaction(async (tx) => {
-    const references = await tx.findReferenceData({
-      cityId: listing.cityId,
-      localityId: listing.localityId,
-      propertyTypeId: listing.propertyTypeId,
-      amenityIds: listing.amenityIds,
-    });
-    const errors: ListingSubmissionError[] = [];
-
-    if (references.localityCityId !== listing.cityId) {
-      errors.push({
-        field: "localityId",
-        message: "Choose a valid locality for the city.",
-      });
-    }
-    if (!references.propertyTypeExists) {
-      errors.push({
-        field: "propertyTypeId",
-        message: "Choose a valid property type.",
-      });
-    }
-    if (references.foundAmenityIds.length !== listing.amenityIds.length) {
-      errors.push({
-        field: "amenityIds",
-        message: "Choose only valid amenities.",
-      });
-    }
-    if (errors.length > 0) {
-      throw new ListingSubmissionValidationError(errors);
-    }
+    await validateSubmissionReferences(listing, tx);
 
     return tx.createListing({
       ...listing,
       ownerId: actor.id,
     });
   });
+}
+
+export async function validateSubmissionReferences(
+  listing: ValidatedListingSubmission,
+  tx: Pick<ListingSubmissionTransaction, "findReferenceData">,
+) {
+  const references = await tx.findReferenceData({
+    cityId: listing.cityId,
+    localityId: listing.localityId,
+    propertyTypeId: listing.propertyTypeId,
+    amenityIds: listing.amenityIds,
+  });
+  const errors: ListingSubmissionError[] = [];
+
+  if (references.localityCityId !== listing.cityId) {
+    errors.push({
+      field: "localityId",
+      message: "Choose a valid locality for the city.",
+    });
+  }
+  if (!references.propertyTypeExists) {
+    errors.push({
+      field: "propertyTypeId",
+      message: "Choose a valid property type.",
+    });
+  }
+  if (references.foundAmenityIds.length !== listing.amenityIds.length) {
+    errors.push({
+      field: "amenityIds",
+      message: "Choose only valid amenities.",
+    });
+  }
+  if (errors.length > 0) {
+    throw new ListingSubmissionValidationError(errors);
+  }
+
+  return references;
 }
 
 export function fieldErrors(errors: ListingSubmissionError[]) {

@@ -52,6 +52,7 @@ export default async function AdminListingReviewPage({
       title: true,
       description: true,
       status: true,
+      reviewVersion: true,
       rentAmountPaise: true,
       securityDepositAmountPaise: true,
       contactPhone: true,
@@ -80,6 +81,8 @@ export default async function AdminListingReviewPage({
       <dl>
         <dt>Status</dt>
         <dd>{listing.status}</dd>
+        <dt>Review version</dt>
+        <dd>{listing.reviewVersion}</dd>
         <dt>Description</dt>
         <dd>{listing.description ?? "Not provided"}</dd>
         <dt>City</dt>
@@ -128,7 +131,10 @@ export default async function AdminListingReviewPage({
         contact number.
       </p>
       {listing.status === "PENDING_REVIEW" ? (
-        <ModerationActions listingId={listing.id} />
+        <ModerationActions
+          listingId={listing.id}
+          reviewVersion={listing.reviewVersion}
+        />
       ) : (
         <p>This listing is no longer awaiting review.</p>
       )}

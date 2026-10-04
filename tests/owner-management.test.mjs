@@ -218,7 +218,7 @@ test("server actions ignore submitted owner and status fields", async () => {
     const revalidatePath = () => {};
     const redirect = (url) => { throw new Error("redirect:" + url); };
     const createPrismaOwnerListingRepository = () => ({
-      findOwn: async (ownerId, id) => ({ id, status: currentStatus }),
+      findOwn: async (ownerId, id) => ({ id, status: currentStatus, reviewVersion: 1 }),
       transition: async (input) => { writes.push(input); return true; }
     });
   `;
@@ -238,6 +238,7 @@ test("server actions ignore submitted owner and status fields", async () => {
     actions.setStatus(status);
     const form = new FormData();
     form.set("listingId", listingId);
+    form.set("reviewVersion", "1");
     form.set("ownerId", "another-owner");
     form.set("targetStatus", "PUBLISHED");
     form.set("currentStatus", "DRAFT");
@@ -247,6 +248,7 @@ test("server actions ignore submitted owner and status fields", async () => {
       listingId,
       action: expectedAction,
       expectedStatus: status,
+      expectedVersion: 1,
     });
   }
 });

@@ -5,10 +5,11 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 8: public rental discovery. The application includes a Bhilwara-first
-marketplace homepage, published rental browsing and detail pages, URL filters,
-cursor pagination, SEO routes, authentication, owner submission, and ADMIN-only
-moderation. Contact infrastructure and media remain deferred.
+Milestone 13 adds controlled supplier corrections and ADMIN re-review to the
+Bhilwara-first rental marketplace. Published rentals can be browsed and called when
+the listing has a consented contact number. Authenticated OWNER/BROKER accounts can
+submit and correct their own listings; ADMIN controls publication. Media remains
+deferred.
 
 M11 adds host-only supplier and reference-data provisioning. See the
 [operator guide](docs/operator-provisioning.md) for authority, reviewed dry runs,
@@ -246,8 +247,33 @@ never expose contact. Existing listings have no fabricated number and honestly s
 contact unavailable. Contact can attract unsolicited calls because it is public.
 Suppliers should use a number they are authorized and willing to publish.
 
-There is no post-publication contact editing in M12. If a published number is wrong,
-the supplier must withdraw that listing and submit a corrected listing for review;
-an operator can assist. There is no WhatsApp, chat, lead inbox or phone verification.
+M13 allows a supplier to correct the number on the same listing through re-review.
+For urgent removal, the existing withdrawal action remains available. There is no
+WhatsApp, chat, lead inbox or phone verification.
 Apply the committed M12 migration with the existing migration deployment workflow.
 Passing M12 validation does not establish production launch readiness.
+
+## M13 controlled supplier corrections and re-review
+
+An authenticated OWNER or BROKER can open "Correct listing" from their own listing
+detail page for a `PENDING_REVIEW` or `PUBLISHED` listing. The correction form reuses
+submission fields and server validation, including rent, references, amenities and
+listing-specific contact consent. Every correction requires a fresh consent
+choice before a phone number can be displayed publicly. The same listing ID and owner are kept;
+the correction does not create a replacement listing.
+
+Submitting a correction to a published listing atomically stores the corrected
+content and returns it to `PENDING_REVIEW`. It immediately disappears from public
+discovery, detail, metadata and sitemap, including the call action, until ADMIN
+approves the corrected version. A correction to a pending listing replaces the
+pending content in place and remains private. The form warns suppliers of this
+temporary loss of visibility; withdrawal is still available for urgent removal.
+
+Each listing starts at review version 1, including rows that existed before M13.
+Every accepted correction increments the version. ADMIN sees the current version
+and corrected content, and approval or rejection conditionally matches both
+`PENDING_REVIEW` and the version that was reviewed. A stale review must reload;
+it cannot decide newer content. Owner terminal actions also condition on the
+expected version and source status. `RENTED`, `ARCHIVED` and `REJECTED` listings
+cannot be corrected through this flow. M13 adds no new listing status or moderation
+history. Apply its committed migration through the existing deployment workflow.

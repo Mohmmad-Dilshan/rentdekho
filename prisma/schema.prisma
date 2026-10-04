@@ -152,6 +152,7 @@ model Listing {
   title                      String
   description                String?
   status                     ListingStatus    @default(DRAFT)
+  reviewVersion              Int              @default(1)
   furnishingStatus           FurnishingStatus @default(UNFURNISHED)
   tenantPreference           TenantPreference @default(ANY)
   rentAmountPaise            BigInt

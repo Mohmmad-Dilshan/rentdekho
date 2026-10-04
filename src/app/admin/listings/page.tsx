@@ -47,6 +47,7 @@ export default async function AdminListingsPage() {
       title: true,
       description: true,
       status: true,
+      reviewVersion: true,
       rentAmountPaise: true,
       securityDepositAmountPaise: true,
       contactPhone: true,
@@ -75,6 +76,7 @@ export default async function AdminListingsPage() {
               <article>
                 <h2>{listing.title}</h2>
                 <p>Status: {listing.status}</p>
+                <p>Review version: {listing.reviewVersion}</p>
                 {listing.description ? <p>{listing.description}</p> : null}
                 <dl>
                   <dt>Location</dt>

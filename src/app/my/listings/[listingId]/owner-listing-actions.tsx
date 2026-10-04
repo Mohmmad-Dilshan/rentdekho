@@ -23,7 +23,13 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-function RentedAction({ listingId }: { listingId: string }) {
+function RentedAction({
+  listingId,
+  reviewVersion,
+}: {
+  listingId: string;
+  reviewVersion: number;
+}) {
   const [state, formAction] = useActionState(
     markListingRented,
     initialOwnerActionState,
@@ -31,13 +37,20 @@ function RentedAction({ listingId }: { listingId: string }) {
   return (
     <form action={formAction} className="owner-action-form">
       <input type="hidden" name="listingId" value={listingId} />
+      <input type="hidden" name="reviewVersion" value={reviewVersion} />
       <SubmitButton label="Mark rented" />
       {state.error ? <p role="alert">{state.error}</p> : null}
     </form>
   );
 }
 
-function WithdrawPendingAction({ listingId }: { listingId: string }) {
+function WithdrawPendingAction({
+  listingId,
+  reviewVersion,
+}: {
+  listingId: string;
+  reviewVersion: number;
+}) {
   const [state, formAction] = useActionState(
     withdrawPendingListing,
     initialOwnerActionState,
@@ -45,13 +58,20 @@ function WithdrawPendingAction({ listingId }: { listingId: string }) {
   return (
     <form action={formAction} className="owner-action-form">
       <input type="hidden" name="listingId" value={listingId} />
+      <input type="hidden" name="reviewVersion" value={reviewVersion} />
       <SubmitButton label="Withdraw listing" />
       {state.error ? <p role="alert">{state.error}</p> : null}
     </form>
   );
 }
 
-function WithdrawPublishedAction({ listingId }: { listingId: string }) {
+function WithdrawPublishedAction({
+  listingId,
+  reviewVersion,
+}: {
+  listingId: string;
+  reviewVersion: number;
+}) {
   const [state, formAction] = useActionState(
     withdrawPublishedListing,
     initialOwnerActionState,
@@ -59,6 +79,7 @@ function WithdrawPublishedAction({ listingId }: { listingId: string }) {
   return (
     <form action={formAction} className="owner-action-form">
       <input type="hidden" name="listingId" value={listingId} />
+      <input type="hidden" name="reviewVersion" value={reviewVersion} />
       <SubmitButton label="Withdraw listing" />
       {state.error ? <p role="alert">{state.error}</p> : null}
     </form>
@@ -68,9 +89,11 @@ function WithdrawPublishedAction({ listingId }: { listingId: string }) {
 export function OwnerListingActions({
   listingId,
   status,
+  reviewVersion,
 }: {
   listingId: string;
   status: "PUBLISHED" | "PENDING_REVIEW";
+  reviewVersion: number;
 }) {
   return (
     <section className="contact-note" aria-labelledby="manage-listing-heading">
@@ -80,11 +103,19 @@ export function OwnerListingActions({
         withdraw to remove it from review or public browsing.
       </p>
       <div className="owner-actions">
-        {status === "PUBLISHED" ? <RentedAction listingId={listingId} /> : null}
         {status === "PUBLISHED" ? (
-          <WithdrawPublishedAction listingId={listingId} />
+          <RentedAction listingId={listingId} reviewVersion={reviewVersion} />
+        ) : null}
+        {status === "PUBLISHED" ? (
+          <WithdrawPublishedAction
+            listingId={listingId}
+            reviewVersion={reviewVersion}
+          />
         ) : (
-          <WithdrawPendingAction listingId={listingId} />
+          <WithdrawPendingAction
+            listingId={listingId}
+            reviewVersion={reviewVersion}
+          />
         )}
       </div>
     </section>

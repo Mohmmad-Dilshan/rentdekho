@@ -7,7 +7,7 @@ import { PrismaClient } from "@prisma/client";
 // Opt-in production integration test: no new browser dependency is installed.
 test(
   "production listing pipeline, browser money validity, authorization and M9 lifecycle",
-  { timeout: 240_000 },
+  { timeout: 480_000 },
   async (t) => {
     const base = process.env.M10_BASE_URL;
     const playwrightModule = process.env.M10_PLAYWRIGHT_MODULE;
@@ -555,8 +555,9 @@ test(
             1,
           );
           assert.equal(
-            bodies.filter((body) => body.includes("no longer awaiting review"))
-              .length,
+            bodies.filter((body) =>
+              body.includes("This review is stale or the listing has changed"),
+            ).length,
             1,
           );
           const result = await prisma.listing.findUnique({
@@ -633,6 +634,278 @@ test(
         deposit: "",
       });
       await moderate(admin, mobile, "REJECT");
+
+      await t.test(
+        "published correction hides reviewed content and contact until reapproval on desktop",
+        async () => {
+          const original = await submit(owner, "published correction");
+          await moderate(admin, original, "APPROVE");
+          await owner.page.setViewportSize({ width: 1280, height: 900 });
+          await owner.page.goto(`${origin}/my/listings/${original.id}`);
+          await owner.page
+            .getByRole("link", { name: "Correct listing" })
+            .click();
+          await owner.page.waitForURL(`**/my/listings/${original.id}/edit`);
+          assert.match(
+            await owner.page.locator("body").innerText(),
+            /immediately removes the listing and its contact from public view/,
+          );
+          assert.equal(
+            await owner.page.locator('[name="reviewVersion"]').inputValue(),
+            String(original.reviewVersion),
+          );
+          await owner.page.locator('[name="rent"]').fill("0");
+          assert.equal(
+            await owner.page
+              .locator('[name="rent"]')
+              .evaluate((input) => input.checkValidity()),
+            false,
+          );
+          await owner.page
+            .getByRole("button", { name: "Submit correction for review" })
+            .click();
+          assert.ok(
+            owner.page.url().endsWith(`/my/listings/${original.id}/edit`),
+          );
+          const correctedTitle = `M13 corrected published ${suffix}`;
+          await owner.page.locator('[name="title"]').fill(correctedTitle);
+          await owner.page.locator('[name="rent"]').fill("13500.75");
+          await owner.page.locator('[name="contactPhone"]').fill("9123456789");
+          assert.equal(
+            await owner.page.locator('[name="contactConsent"]').isChecked(),
+            false,
+            "Changing a public number requires new consent",
+          );
+          await owner.page.locator("form").evaluate((form) => {
+            for (const [name, value] of Object.entries({
+              ownerId: "another-owner",
+              status: "PUBLISHED",
+              role: "ADMIN",
+            })) {
+              const input = document.createElement("input");
+              input.type = "hidden";
+              input.name = name;
+              input.value = value;
+              form.append(input);
+            }
+          });
+          await noOverflow(owner.page);
+          await owner.page
+            .getByRole("button", { name: "Submit correction for review" })
+            .click();
+          await owner.page.waitForURL(
+            new RegExp(`/my/listings/${original.id}\\?updated=corrected$`),
+          );
+          assert.match(
+            await owner.page.getByRole("status").innerText(),
+            /not public while pending/,
+          );
+          const pendingCorrection = await prisma.listing.findUnique({
+            where: { id: original.id },
+          });
+          assert.equal(pendingCorrection.status, "PENDING_REVIEW");
+          assert.equal(
+            pendingCorrection.reviewVersion,
+            original.reviewVersion + 1,
+          );
+          assert.equal(pendingCorrection.ownerId, owner.id);
+          assert.equal(pendingCorrection.title, correctedTitle);
+          assert.equal(pendingCorrection.rentAmountPaise, 1350075n);
+          assert.equal(pendingCorrection.contactPhone, "+919123456789");
+          assert.equal(pendingCorrection.contactConsentAt, null);
+          assert.equal(
+            await prisma.listing.count({
+              where: { ownerId: owner.id, title: correctedTitle },
+            }),
+            1,
+          );
+          await publicVisibility(original.id, original.title, false);
+          await publicVisibility(original.id, correctedTitle, false);
+          const privateDetail = await anonymous.request.get(
+            `${origin}/rentals/${original.id}`,
+          );
+          assert.ok(!(await privateDetail.text()).includes("+919123456789"));
+          assert.match(
+            await owner.page.locator("body").innerText(),
+            /corrected published/,
+          );
+          await admin.page.goto(`${origin}/admin/listings/${original.id}`);
+          assert.match(
+            await admin.page.locator("body").innerText(),
+            /Review version/,
+          );
+          assert.equal(
+            await admin.page
+              .locator('[name="reviewVersion"]')
+              .first()
+              .inputValue(),
+            String(pendingCorrection.reviewVersion),
+          );
+          await moderate(admin, pendingCorrection, "APPROVE");
+          await publicVisibility(original.id, correctedTitle, true);
+          const republished = await anonymous.newPage();
+          await republished.goto(`${origin}/rentals/${original.id}`);
+          assert.equal(await republished.locator('a[href^="tel:"]').count(), 0);
+          assert.match(
+            await republished.locator("body").innerText(),
+            /Contact is unavailable/,
+          );
+          await republished.close();
+        },
+      );
+
+      await t.test(
+        "375px pending correction rejects stale ADMIN approve and reject, then exposes consented contact only after fresh review",
+        async () => {
+          const original = await submit(broker, "pending correction");
+          const staleApprove = await admin.context.newPage();
+          const staleReject = await admin.context.newPage();
+          for (const page of [staleApprove, staleReject]) {
+            page.on("pageerror", (error) => runtimeErrors.push(error.message));
+            await page.setViewportSize({ width: 375, height: 900 });
+            await page.goto(`${origin}/admin/listings/${original.id}`);
+            assert.equal(
+              await page.locator('[name="reviewVersion"]').first().inputValue(),
+              String(original.reviewVersion),
+            );
+            await noOverflow(page);
+          }
+          await broker.page.setViewportSize({ width: 375, height: 900 });
+          await broker.page.goto(`${origin}/my/listings/${original.id}/edit`);
+          assert.match(
+            await broker.page.locator("body").innerText(),
+            /pending listing remains private/,
+          );
+          assert.equal(
+            await broker.page.locator('[name="title"]').inputValue(),
+            original.title,
+          );
+          const correctedTitle = `M13 corrected pending ${suffix}`;
+          await broker.page.locator('[name="title"]').fill(correctedTitle);
+          await broker.page.locator('[name="contactPhone"]').fill("9987654321");
+          await broker.page.locator('[name="contactConsent"]').check();
+          await noOverflow(broker.page);
+          await broker.page
+            .getByRole("button", { name: "Submit correction for review" })
+            .click();
+          await broker.page.waitForURL(
+            new RegExp(`/my/listings/${original.id}\\?updated=corrected$`),
+          );
+          const corrected = await prisma.listing.findUnique({
+            where: { id: original.id },
+          });
+          assert.equal(corrected.status, "PENDING_REVIEW");
+          assert.equal(corrected.reviewVersion, original.reviewVersion + 1);
+          assert.equal(corrected.contactPhone, "+919987654321");
+          assert.ok(corrected.contactConsentAt);
+          await publicVisibility(original.id, correctedTitle, false);
+          const hiddenDetail = await anonymous.request.get(
+            `${origin}/rentals/${original.id}`,
+          );
+          assert.ok(!(await hiddenDetail.text()).includes("+919987654321"));
+          for (const [page, decision] of [
+            [staleApprove, "Approve and publish"],
+            [staleReject, "Reject listing"],
+          ]) {
+            await page
+              .getByRole("button", { name: decision, exact: true })
+              .click();
+            await page
+              .getByRole("alert")
+              .filter({ hasText: /stale or the listing has changed/ })
+              .waitFor();
+            const stillPending = await prisma.listing.findUnique({
+              where: { id: original.id },
+            });
+            assert.equal(stillPending.status, "PENDING_REVIEW");
+            assert.equal(stillPending.reviewVersion, corrected.reviewVersion);
+            assert.equal(stillPending.title, correctedTitle);
+          }
+          await admin.page.setViewportSize({ width: 375, height: 900 });
+          await admin.page.goto(`${origin}/admin/listings/${original.id}`);
+          assert.match(
+            await admin.page.locator("body").innerText(),
+            /corrected pending/,
+          );
+          assert.equal(
+            await admin.page
+              .locator('[name="reviewVersion"]')
+              .first()
+              .inputValue(),
+            String(corrected.reviewVersion),
+          );
+          await noOverflow(admin.page);
+          await moderate(admin, corrected, "APPROVE");
+          const publicPage = await anonymous.newPage();
+          await publicPage.setViewportSize({ width: 375, height: 900 });
+          await publicPage.goto(`${origin}/rentals/${original.id}`);
+          assert.equal(
+            await publicPage
+              .getByRole("link", { name: /Call listing contact at/ })
+              .getAttribute("href"),
+            "tel:+919987654321",
+          );
+          await noOverflow(publicPage);
+          await publicPage.close();
+          await staleApprove.close();
+          await staleReject.close();
+        },
+      );
+
+      await t.test(
+        "correction route denies cross-owner and unauthorized roles",
+        async () => {
+          const brokerListing = await submit(broker, "correction IDOR");
+          for (const actor of [owner, tenant, admin]) {
+            assert.equal(
+              (
+                await actor.context.request.get(
+                  `${origin}/my/listings/${brokerListing.id}/edit`,
+                )
+              ).status(),
+              404,
+            );
+          }
+          assert.equal(
+            (
+              await anonymous.request.get(
+                `${origin}/my/listings/${brokerListing.id}/edit`,
+                { maxRedirects: 0 },
+              )
+            ).status(),
+            307,
+          );
+        },
+      );
+      await t.test(
+        "old pending correction form cannot depublish a newly approved listing",
+        async () => {
+          const listing = await submit(owner, "stale pending form");
+          await owner.page.goto(`${origin}/my/listings/${listing.id}/edit`);
+          assert.equal(
+            await owner.page.locator('[name="expectedStatus"]').inputValue(),
+            "PENDING_REVIEW",
+          );
+          await owner.page
+            .locator('[name="title"]')
+            .fill(`M13 stale owner ${suffix}`);
+          await moderate(admin, listing, "APPROVE");
+          await owner.page
+            .getByRole("button", { name: "Submit correction for review" })
+            .click();
+          await owner.page
+            .getByRole("alert")
+            .filter({ hasText: /changed or is unavailable/ })
+            .waitFor();
+          const saved = await prisma.listing.findUnique({
+            where: { id: listing.id },
+          });
+          assert.equal(saved.status, "PUBLISHED");
+          assert.equal(saved.reviewVersion, listing.reviewVersion);
+          assert.equal(saved.title, listing.title);
+          await publicVisibility(listing.id, listing.title, true);
+        },
+      );
       assert.deepEqual(runtimeErrors, [], "No browser runtime errors");
     } finally {
       // Cleanup only records belonging to this run's unique fixture identities.

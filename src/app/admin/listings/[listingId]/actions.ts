@@ -29,11 +29,13 @@ async function applyModeration(
       String(formData.get("listingId") ?? ""),
       decision,
       createPrismaListingModerationRepository(prisma),
+      Number(formData.get("reviewVersion")),
     );
 
     if (result.outcome === "not-pending") {
       return {
-        error: "This listing is no longer awaiting review.",
+        error:
+          "This review is stale or the listing has changed. Reload and review the current version.",
         message: null,
       };
     }

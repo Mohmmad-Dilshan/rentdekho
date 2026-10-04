@@ -78,6 +78,12 @@ export default async function MyListingDetailPage({
         {updated === "withdrawn" && listing.status === "ARCHIVED" ? (
           <p role="status">Listing withdrawn.</p>
         ) : null}
+        {updated === "corrected" && listing.status === "PENDING_REVIEW" ? (
+          <p role="status">
+            Correction submitted for ADMIN review. This listing is not public
+            while pending.
+          </p>
+        ) : null}
         <p className="eyebrow">{listing.status.replaceAll("_", " ")}</p>
         <h1>{listing.title}</h1>
         <p>
@@ -146,7 +152,18 @@ export default async function MyListingDetailPage({
         </section>
         {listing.status === "PUBLISHED" ||
         listing.status === "PENDING_REVIEW" ? (
-          <OwnerListingActions listingId={listing.id} status={listing.status} />
+          <>
+            <p>
+              <Link className="button" href={`/my/listings/${listing.id}/edit`}>
+                Correct listing
+              </Link>
+            </p>
+            <OwnerListingActions
+              listingId={listing.id}
+              status={listing.status}
+              reviewVersion={listing.reviewVersion}
+            />
+          </>
         ) : (
           <p>No actions are available for this listing.</p>
         )}

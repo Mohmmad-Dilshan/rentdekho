@@ -13,6 +13,7 @@ export type ManagedListing = {
   title: string;
   description: string | null;
   status: string;
+  reviewVersion: number;
   rentAmountPaise: bigint;
   securityDepositAmountPaise: bigint | null;
   contactPhone: string | null;
@@ -35,6 +36,7 @@ export type OwnerListingRepository = {
     listingId: string;
     action: OwnerAction;
     expectedStatus: OwnerSourceStatus;
+    expectedVersion: number;
   }): Promise<boolean>;
 };
 
@@ -84,6 +86,7 @@ export async function transitionOwnerListing(
   action: unknown,
   expectedStatus: unknown,
   repository: OwnerListingRepository,
+  expectedVersion?: number,
 ) {
   const ownerId = requireOwner(actor);
   const id = parseListingId(listingId);
@@ -100,7 +103,11 @@ export async function transitionOwnerListing(
   }
   const sourceStatus = expectedStatus as OwnerSourceStatus;
   const listing = await repository.findOwn(ownerId, id);
-  if (!listing || listing.status !== sourceStatus) {
+  if (
+    !listing ||
+    listing.status !== sourceStatus ||
+    (expectedVersion !== undefined && listing.reviewVersion !== expectedVersion)
+  ) {
     return { outcome: "unavailable" as const };
   }
   const updated = await repository.transition({
@@ -108,6 +115,7 @@ export async function transitionOwnerListing(
     listingId: id,
     action,
     expectedStatus: sourceStatus,
+    expectedVersion: listing.reviewVersion,
   });
   return updated
     ? { outcome: "updated" as const }

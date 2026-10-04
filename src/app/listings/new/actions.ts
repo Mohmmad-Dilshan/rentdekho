@@ -11,6 +11,7 @@ import { createPrismaListingSubmissionRepository } from "../../../server/listing
 import {
   createListingSubmission,
   fieldErrors,
+  listingInputFromFormData,
   ListingSubmissionValidationError,
 } from "../../../server/listings/submission";
 
@@ -27,21 +28,7 @@ export async function submitListing(
     const user = await requireRole(["OWNER", "BROKER"]);
     await createListingSubmission(
       { id: user.id, role: user.role as "OWNER" | "BROKER" },
-      {
-        cityId: String(formData.get("cityId") ?? ""),
-        localityId: String(formData.get("localityId") ?? ""),
-        propertyTypeId: String(formData.get("propertyTypeId") ?? ""),
-        title: String(formData.get("title") ?? ""),
-        description: String(formData.get("description") ?? ""),
-        rent: String(formData.get("rent") ?? ""),
-        securityDeposit: String(formData.get("securityDeposit") ?? ""),
-        contactPhone: String(formData.get("contactPhone") ?? ""),
-        contactConsent: String(formData.get("contactConsent") ?? ""),
-        availableFrom: String(formData.get("availableFrom") ?? ""),
-        furnishingStatus: String(formData.get("furnishingStatus") ?? ""),
-        tenantPreference: String(formData.get("tenantPreference") ?? ""),
-        amenityIds: formData.getAll("amenityIds").map(String),
-      },
+      listingInputFromFormData(formData),
       createPrismaListingSubmissionRepository(prisma),
     );
   } catch (error) {

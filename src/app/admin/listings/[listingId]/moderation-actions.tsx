@@ -12,7 +12,13 @@ const initialModerationActionState: ModerationActionState = {
   message: null,
 };
 
-export function ModerationActions({ listingId }: { listingId: string }) {
+export function ModerationActions({
+  listingId,
+  reviewVersion,
+}: {
+  listingId: string;
+  reviewVersion: number;
+}) {
   const [approveState, approveAction, isApproving] = useActionState(
     approveListing,
     initialModerationActionState,
@@ -27,6 +33,7 @@ export function ModerationActions({ listingId }: { listingId: string }) {
       <h2 id="moderation-actions-heading">Moderation decision</h2>
       <form action={approveAction}>
         <input name="listingId" type="hidden" value={listingId} />
+        <input name="reviewVersion" type="hidden" value={reviewVersion} />
         <button type="submit" disabled={isApproving || isRejecting}>
           {isApproving ? "Publishing…" : "Approve and publish"}
         </button>
@@ -37,6 +44,7 @@ export function ModerationActions({ listingId }: { listingId: string }) {
       </form>
       <form action={rejectAction}>
         <input name="listingId" type="hidden" value={listingId} />
+        <input name="reviewVersion" type="hidden" value={reviewVersion} />
         <button type="submit" disabled={isApproving || isRejecting}>
           {isRejecting ? "Rejecting…" : "Reject listing"}
         </button>

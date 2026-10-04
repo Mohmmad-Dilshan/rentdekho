@@ -252,5 +252,32 @@ The public repository continues to require PUBLISHED at the query boundary. Only
 detail select includes the contact columns; its mapper emits a phone only when consent
 and canonical format are present, stripping the consent timestamp. Discovery, sitemap
 and metadata never emit phone data. Existing owner status transitions remove public
-detail access and therefore the call action. No new lifecycle transition, contact edit,
-API endpoint, external integration or dependency is introduced.
+detail access and therefore the call action. M12 itself introduced no contact edit,
+API endpoint, external integration or dependency.
+
+## M13 controlled supplier corrections and re-review
+
+`Listing.reviewVersion` is a positive integer initialized to 1 for both new and
+existing rows by the additive migration. Each accepted correction increments it;
+the marker identifies the content ADMIN must review, without adding revision history.
+The owner correction route reads only a listing belonging to the authenticated
+OWNER/BROKER in `PENDING_REVIEW` or `PUBLISHED`. Its server action reuses submission
+validation and reference checks. The Prisma correction repository conditionally
+updates the listing by ID, owner ID, exact expected source status and review
+version in a transaction with amenity replacement. The same listing row and owner
+remain; a pending correction replaces pending content in place.
+
+A published correction stores validated content and changes status to
+`PENDING_REVIEW` in that same atomic update. The existing PUBLISHED-only public
+queries exclude it from discovery, detail, metadata and sitemap immediately;
+contact is therefore unavailable until approval. Contact normalization and consent
+rules remain authoritative on the server, and correction consent starts unchecked.
+
+ADMIN queue and detail show the current review version and corrected content.
+Approval and rejection condition on both `PENDING_REVIEW` and the version from the
+review page, so an old page cannot decide a newer correction. Owner rented and
+withdrawal actions also condition on ownership, source status and expected version;
+losing a race returns an unavailable/stale result rather than overwriting a newer
+state. Existing RENTED and ARCHIVED terminal behavior remains intact. M13 adds no
+new status, general edit capability, moderation history, public account data, or
+external integration.

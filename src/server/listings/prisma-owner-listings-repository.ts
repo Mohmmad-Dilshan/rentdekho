@@ -10,6 +10,7 @@ const ownerListingSelect = {
   title: true,
   description: true,
   status: true,
+  reviewVersion: true,
   rentAmountPaise: true,
   securityDepositAmountPaise: true,
   contactPhone: true,
@@ -53,12 +54,19 @@ export function createPrismaOwnerListingRepository(
       });
       return listing ? toManagedListing(listing) : null;
     },
-    async transition({ ownerId, listingId, action, expectedStatus }) {
+    async transition({
+      ownerId,
+      listingId,
+      action,
+      expectedStatus,
+      expectedVersion,
+    }) {
       const result = await prisma.listing.updateMany({
         where: {
           id: listingId,
           ownerId,
           status: expectedStatus,
+          reviewVersion: expectedVersion,
         },
         data: { status: action === "MARK_RENTED" ? "RENTED" : "ARCHIVED" },
       });

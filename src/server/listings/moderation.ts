@@ -23,6 +23,7 @@ export type ListingModerationRepository = {
   transitionPendingListing(input: {
     listingId: string;
     targetStatus: ModerationTargetStatus;
+    expectedVersion: number;
   }): Promise<{ updated: boolean }>;
 };
 
@@ -37,6 +38,7 @@ export async function moderateListing(
   listingId: string,
   decision: string,
   repository: ListingModerationRepository,
+  expectedVersion = 1,
 ) {
   if (!actor) {
     throw new AuthenticationRequiredError();
@@ -45,7 +47,11 @@ export async function moderateListing(
   assertRole(actor.role, ["ADMIN"]);
 
   const normalizedListingId = listingId.trim();
-  if (!normalizedListingId) {
+  if (
+    !normalizedListingId ||
+    !Number.isSafeInteger(expectedVersion) ||
+    expectedVersion < 1
+  ) {
     throw new ModerationInputError();
   }
 
@@ -53,6 +59,7 @@ export async function moderateListing(
   const result = await repository.transitionPendingListing({
     listingId: normalizedListingId,
     targetStatus,
+    expectedVersion,
   });
 
   return result.updated

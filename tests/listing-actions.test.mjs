@@ -20,7 +20,7 @@ async function loadActions(path, boundary) {
   ).href;
   const harness = `
     import { AuthenticationRequiredError, AuthorizationError, assertRole } from ${JSON.stringify(rules)};
-    import { createListingSubmission, fieldErrors, ListingSubmissionValidationError } from ${JSON.stringify(submission)};
+    import { createListingSubmission, fieldErrors, listingInputFromFormData, ListingSubmissionValidationError } from ${JSON.stringify(submission)};
     import { moderateListing, ModerationInputError } from ${JSON.stringify(moderation)};
     const requireRole = async (roles) => {
       const actor = globalThis[${JSON.stringify(boundary)}].actor;
@@ -155,6 +155,7 @@ test("moderation actions reauthorize and ignore client target/owner/status field
     );
     const data = new FormData();
     data.set("listingId", "listing");
+    data.set("reviewVersion", "1");
     data.set("ownerId", "another-owner");
     data.set("status", "PUBLISHED");
     data.set("targetStatus", "RENTED");
@@ -170,8 +171,8 @@ test("moderation actions reauthorize and ignore client target/owner/status field
     await actions.approveListing({}, data);
     await actions.rejectListing({}, data);
     assert.deepEqual(writes, [
-      { listingId: "listing", targetStatus: "PUBLISHED" },
-      { listingId: "listing", targetStatus: "REJECTED" },
+      { listingId: "listing", targetStatus: "PUBLISHED", expectedVersion: 1 },
+      { listingId: "listing", targetStatus: "REJECTED", expectedVersion: 1 },
     ]);
   } finally {
     delete globalThis[boundary];

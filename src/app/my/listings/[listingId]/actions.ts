@@ -32,6 +32,7 @@ async function applyOwnerAction(
       action,
       expectedStatus,
       createPrismaOwnerListingRepository(prisma),
+      Number(formData.get("reviewVersion")),
     );
     if (result.outcome === "unavailable") {
       return {
