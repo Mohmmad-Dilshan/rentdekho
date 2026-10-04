@@ -1,0 +1,93 @@
+name: RentDekho CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          POSTGRES_DB: rentdekho_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rentdekho_ci_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CI: true
+      PGPASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+      DATABASE_URL: postgresql://postgres:${{ github.run_id }}-${{ github.run_attempt }}@localhost:5432/rentdekho_ci_test?schema=public
+      M11_TEST_DATABASE_URL: postgresql://postgres:${{ github.run_id }}-${{ github.run_attempt }}@localhost:5432/rentdekho_m11_test_ci?schema=public
+      M12_TEST_DATABASE_URL: postgresql://postgres:${{ github.run_id }}-${{ github.run_attempt }}@localhost:5432/rentdekho_m12_test_ci?schema=public
+      M13_TEST_DATABASE_URL: postgresql://postgres:${{ github.run_id }}-${{ github.run_attempt }}@localhost:5432/rentdekho_m13_test_ci?schema=public
+      BETTER_AUTH_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify runtime
+        run: |
+          test "$(node --version)" = "v24.21.0"
+          test "$(npm --version)" = "11.19.0"
+
+      - name: Set disposable CI auth secret
+        run: |
+          auth_secret=$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")
+          echo "::add-mask::$auth_secret"
+          echo "BETTER_AUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Create disposable test databases
+        run: |
+          pg_isready -h localhost -p 5432 -U postgres -d rentdekho_ci_test
+          for database_name in rentdekho_m11_test_ci rentdekho_m12_test_ci rentdekho_m13_test_ci; do
+            createdb -h localhost -U postgres "$database_name"
+          done
+
+      - name: Apply committed migrations to test databases
+        run: |
+          for database_url in "$DATABASE_URL" "$M11_TEST_DATABASE_URL" "$M12_TEST_DATABASE_URL" "$M13_TEST_DATABASE_URL"; do
+            DATABASE_URL="$database_url" npm run prisma:migrate:deploy
+          done
+
+      - name: Test with PostgreSQL
+        run: |
+          set -o pipefail
+          npm test | tee "$RUNNER_TEMP/rentdekho-tests.log"
+          skip_summaries=$(grep -c 'skipped 0$' "$RUNNER_TEMP/rentdekho-tests.log" || true)
+          if [ "$skip_summaries" -ne 2 ]; then
+            echo "Expected both Node test runs to report zero skipped tests."
+            exit 1
+          fi
+
+      - name: Build production application
+        run: npm run build

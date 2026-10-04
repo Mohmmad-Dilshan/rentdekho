@@ -124,9 +124,17 @@ npm test
 The typecheck command generates Next.js route types and runs TypeScript without
 emitting application files. Run these checks separately from the production build.
 `npm test` uses Node.js's built-in test runner for service/action regressions and
-the PostgreSQL owner-lifecycle suite. The latter loads the ignored `.env` when
-needed and skips if `DATABASE_URL` is absent; configure a disposable development
-database to exercise it.
+PostgreSQL owner, provisioning, contact, and correction suites. Database suites
+skip when their `DATABASE_URL` or M11/M12/M13 test database URL is absent; use
+separate migrated, disposable databases to exercise them.
+
+The `RentDekho CI` workflow runs these checks and `npm run build` on pushes and
+pull requests to `main`, using Node.js 24.21.0, npm 11.19.0, and `npm ci`.
+It starts a disposable PostgreSQL 16 service, applies the committed migrations
+to separate owner, M11, M12, and M13 test databases, and requires `npm test`
+to finish without skipped tests. The production browser pipeline remains a
+separate opt-in check; it needs a running production server, Chrome, and a
+Playwright module as described below.
 
 To apply formatting, run the following command. It writes changes to project files:
 
