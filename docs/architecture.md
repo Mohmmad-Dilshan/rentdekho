@@ -281,3 +281,17 @@ losing a race returns an unavailable/stale result rather than overwriting a newe
 state. Existing RENTED and ARCHIVED terminal behavior remains intact. M13 adds no
 new status, general edit capability, moderation history, public account data, or
 external integration.
+
+## M15 inclusive rent-budget filtering
+
+`public-discovery.ts` parses optional `minRent` and `maxRent` URL values as
+positive decimal rupees from ₹0.01 through ₹1,00,00,000 and converts them
+exactly to integer paise. Malformed, duplicate, out-of-range, zero, or inverted
+bounds produce a visible invalid-filter state without broadening results. An
+empty bound is optional.
+
+`prisma-public-listings-repository.ts` applies inclusive rent bounds alongside
+the existing `PUBLISHED` condition and newest-first keyset cursor. Applying the
+GET filter form starts at page one; next-page links retain valid budget, locality,
+and property-type filters. Public selects continue to exclude private fields.
+M15 adds no migration or index.

@@ -906,6 +906,172 @@ test(
           await publicVisibility(listing.id, listing.title, true);
         },
       );
+
+      await t.test(
+        "M15 rent budget applies inclusively, preserves pagination, and shows invalid filters on desktop and 375px",
+        async () => {
+          const budgetRents = [
+            ...Array(14).fill(1500000n),
+            1250050n,
+            2000000n,
+            1250049n,
+            2000001n,
+          ];
+          await prisma.listing.createMany({
+            data: budgetRents.map((rentAmountPaise, index) => ({
+              ownerId: owner.id,
+              localityId,
+              propertyTypeId,
+              title: `M15 budget ${suffix} ${index}`,
+              status: "PUBLISHED",
+              rentAmountPaise,
+            })),
+          });
+          const matching = await prisma.listing.findMany({
+            where: {
+              status: "PUBLISHED",
+              localityId,
+              propertyTypeId,
+              rentAmountPaise: { gte: 1250050n, lte: 2000000n },
+            },
+            select: { id: true },
+          });
+          const expectedIds = matching.map(({ id }) => id).sort();
+          assert.ok(expectedIds.length > 12);
+          const budgetRows = await prisma.listing.findMany({
+            where: {
+              ownerId: owner.id,
+              title: { startsWith: `M15 budget ${suffix}` },
+            },
+            select: { id: true, rentAmountPaise: true },
+          });
+          const boundaryId = (amount) =>
+            budgetRows.find((row) => row.rentAmountPaise === amount)?.id;
+          const lowerId = boundaryId(1250050n);
+          const upperId = boundaryId(2000000n);
+          const belowId = boundaryId(1250049n);
+          const aboveId = boundaryId(2000001n);
+          assert.ok(lowerId && upperId && belowId && aboveId);
+
+          async function cardIds(page) {
+            return page
+              .locator(".listing-card h2 a")
+              .evaluateAll((links) =>
+                links.map((link) =>
+                  link.getAttribute("href").split("/").at(-1),
+                ),
+              );
+          }
+
+          for (const width of [1280, 375]) {
+            const page = await anonymous.newPage();
+            try {
+              await page.setViewportSize({ width, height: 900 });
+              await page.goto(
+                `${origin}/rentals?locality=${localityId}&propertyType=${propertyTypeId}`,
+              );
+              await page.locator('[name="minRent"]').fill("12500.50");
+              await page.locator('[name="maxRent"]').fill("20000");
+              await page
+                .getByRole("button", { name: "Apply filters", exact: true })
+                .click();
+              await page.waitForURL(
+                (url) =>
+                  url.searchParams.get("minRent") === "12500.50" &&
+                  url.searchParams.get("maxRent") === "20000",
+              );
+              const appliedUrl = new URL(page.url());
+              assert.equal(appliedUrl.searchParams.get("locality"), localityId);
+              assert.equal(
+                appliedUrl.searchParams.get("propertyType"),
+                propertyTypeId,
+              );
+              assert.equal(appliedUrl.searchParams.has("cursor"), false);
+              const firstIds = await cardIds(page);
+              assert.equal(firstIds.length, 12, `${width}px first page size`);
+              await noOverflow(page);
+
+              const next = page.getByRole("link", {
+                name: "Show more rentals",
+                exact: true,
+              });
+              const nextUrl = new URL(await next.getAttribute("href"), origin);
+              for (const [key, value] of [
+                ["locality", localityId],
+                ["propertyType", propertyTypeId],
+                ["minRent", "12500.50"],
+                ["maxRent", "20000"],
+              ])
+                assert.equal(nextUrl.searchParams.get(key), value);
+              assert.ok(nextUrl.searchParams.get("cursor"));
+              await next.click();
+              await page.waitForURL(
+                (url) =>
+                  url.searchParams.get("cursor") ===
+                  nextUrl.searchParams.get("cursor"),
+              );
+              assert.equal(
+                await page.locator('[name="minRent"]').inputValue(),
+                "12500.50",
+              );
+              assert.equal(
+                await page.locator('[name="maxRent"]').inputValue(),
+                "20000",
+              );
+              const secondIds = await cardIds(page);
+              assert.ok(secondIds.length > 0);
+              assert.equal(await next.count(), 0);
+              const returnedIds = [...firstIds, ...secondIds];
+              assert.equal(new Set(returnedIds).size, returnedIds.length);
+              assert.deepEqual(returnedIds.sort(), expectedIds);
+              assert.ok(returnedIds.includes(lowerId));
+              assert.ok(returnedIds.includes(upperId));
+              assert.ok(!returnedIds.includes(belowId));
+              assert.ok(!returnedIds.includes(aboveId));
+              await noOverflow(page);
+
+              await page
+                .getByRole("button", { name: "Apply filters", exact: true })
+                .click();
+              await page.waitForURL(
+                (url) =>
+                  !url.searchParams.has("cursor") &&
+                  url.searchParams.get("minRent") === "12500.50",
+              );
+              assert.deepEqual(await cardIds(page), firstIds);
+
+              await page.goto(
+                `${origin}/rentals?locality=${localityId}&propertyType=${propertyTypeId}&minRent=20000&maxRent=12500.50`,
+              );
+              await page
+                .getByRole("alert")
+                .filter({ hasText: /Invalid rent filter/ })
+                .waitFor();
+              assert.equal(await page.locator(".listing-card").count(), 0);
+              assert.equal(await next.count(), 0);
+              await noOverflow(page);
+
+              await page.locator('[name="minRent"]').fill("12500.50");
+              await page.locator('[name="maxRent"]').fill("20000");
+              await page
+                .getByRole("button", { name: "Apply filters", exact: true })
+                .click();
+              await page.waitForURL(
+                (url) =>
+                  !url.searchParams.has("cursor") &&
+                  url.searchParams.get("minRent") === "12500.50" &&
+                  url.searchParams.get("maxRent") === "20000",
+              );
+              assert.equal(await page.getByRole("alert").count(), 0);
+              assert.deepEqual(await cardIds(page), firstIds);
+              await noOverflow(page);
+            } finally {
+              await page.close();
+            }
+          }
+        },
+      );
+
       assert.deepEqual(runtimeErrors, [], "No browser runtime errors");
     } finally {
       // Cleanup only records belonging to this run's unique fixture identities.

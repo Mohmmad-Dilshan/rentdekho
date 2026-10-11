@@ -1,4 +1,6 @@
 export const publicListingPageSize = 12;
+export const publicRentMaximumRupees = BigInt(10_000_000);
+const publicRentMaximumPaise = publicRentMaximumRupees * BigInt(100);
 export type PublicCursor = { createdAt: Date; id: string };
 
 export function decodePublicCursor(value: unknown): PublicCursor | undefined {
@@ -37,6 +39,9 @@ type SearchParamValue = string | string[] | undefined;
 export type PublicListingQuery = {
   localityId?: string;
   propertyTypeId?: string;
+  minRent?: string;
+  maxRent?: string;
+  invalidRent?: boolean;
   cursor?: string;
 };
 
@@ -73,6 +78,8 @@ export type PublicListingRepository = {
   findPublishedListings(input: {
     localityId?: string;
     propertyTypeId?: string;
+    minRentPaise?: bigint;
+    maxRentPaise?: bigint;
     cursor?: PublicCursor;
     take: number;
   }): Promise<PublicListingView[]>;
@@ -93,12 +100,43 @@ function parseIdentifier(value: SearchParamValue) {
     : undefined;
 }
 
+export function parsePublicRentBound(
+  value: SearchParamValue,
+): bigint | null | undefined {
+  if (value === undefined || value === "") return undefined;
+  if (
+    typeof value !== "string" ||
+    value.length > 64 ||
+    !/^\d+(?:\.\d{1,2})?$/.test(value)
+  )
+    return null;
+
+  const [rupees, fraction = ""] = value.split(".");
+  const paise =
+    BigInt(rupees) * BigInt(100) + BigInt(fraction.padEnd(2, "0") || "0");
+  return paise > BigInt(0) && paise <= publicRentMaximumPaise ? paise : null;
+}
+
 export function parsePublicListingQuery(
   searchParams: Record<string, SearchParamValue>,
 ): PublicListingQuery {
+  const minRent = parsePublicRentBound(searchParams.minRent);
+  const maxRent = parsePublicRentBound(searchParams.maxRent);
+  const invalidRent =
+    minRent === null ||
+    maxRent === null ||
+    (minRent !== undefined && maxRent !== undefined && minRent > maxRent);
+
   return {
     localityId: parseIdentifier(searchParams.locality),
     propertyTypeId: parseIdentifier(searchParams.propertyType),
+    ...(typeof searchParams.minRent === "string"
+      ? { minRent: searchParams.minRent.slice(0, 64) }
+      : {}),
+    ...(typeof searchParams.maxRent === "string"
+      ? { maxRent: searchParams.maxRent.slice(0, 64) }
+      : {}),
+    ...(invalidRent ? { invalidRent: true } : {}),
     cursor: decodePublicCursor(firstValue(searchParams.cursor)?.trim())
       ? firstValue(searchParams.cursor)?.trim()
       : undefined,
@@ -109,9 +147,23 @@ export async function discoverPublicListings(
   query: PublicListingQuery,
   repository: PublicListingRepository,
 ) {
+  const minRentPaise = parsePublicRentBound(query.minRent);
+  const maxRentPaise = parsePublicRentBound(query.maxRent);
+  if (
+    query.invalidRent ||
+    minRentPaise === null ||
+    maxRentPaise === null ||
+    (minRentPaise !== undefined &&
+      maxRentPaise !== undefined &&
+      minRentPaise > maxRentPaise)
+  )
+    return { listings: [], nextCursor: undefined };
+
   const listings = await repository.findPublishedListings({
     localityId: parseIdentifier(query.localityId),
     propertyTypeId: parseIdentifier(query.propertyTypeId),
+    minRentPaise,
+    maxRentPaise,
     cursor: decodePublicCursor(query.cursor),
     take: publicListingPageSize + 1,
   });

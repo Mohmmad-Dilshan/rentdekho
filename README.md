@@ -5,7 +5,7 @@ Rajasthan, India.
 
 ## Current stage
 
-Milestone 13 adds controlled supplier corrections and ADMIN re-review to the
+Milestone 15 adds inclusive rent-budget filtering to public discovery in the
 Bhilwara-first rental marketplace. Published rentals can be browsed and called when
 the listing has a consented contact number. Authenticated OWNER/BROKER accounts can
 submit and correct their own listings; ADMIN controls publication. Media remains
@@ -180,8 +180,9 @@ moderation history.
 Public server-rendered routes `/`, `/rentals`, and `/rentals/[listingId]` use a
 separate read-only public discovery repository. Every listing read, including
 metadata and sitemap reads, requires `PUBLISHED` and selects no owner or auth data.
-Unknown query parameters are ignored; malformed or duplicate values normalize to
-no filter. Locality and property type use reference IDs from published inventory.
+Unknown query parameters are ignored. Malformed or duplicate locality and property
+type values normalize to no filter; an invalid cursor starts at the first page.
+Locality and property type use reference IDs from published inventory.
 Discovery fetches 13 records for a 12-item page, ordered by createdAt DESC, id DESC.
 A validated base64url date/ID cursor implements a keyset predicate without offsets.
 
@@ -285,3 +286,18 @@ it cannot decide newer content. Owner terminal actions also condition on the
 expected version and source status. `RENTED`, `ARCHIVED` and `REJECTED` listings
 cannot be corrected through this flow. M13 adds no new listing status or moderation
 history. Apply its committed migration through the existing deployment workflow.
+
+## M15 inclusive rent-budget filtering
+
+The public `/rentals` GET page accepts optional `minRent` and `maxRent` query
+parameters in rupees, for example `?minRent=12500.50&maxRent=20000`. Each bound is
+inclusive, may be left empty, and accepts unsigned whole rupees or at most two
+decimal places, from ₹0.01 through ₹1,00,00,000. Zero is invalid. The server
+converts valid values exactly to paise before querying; no floating-point money
+conversion is used.
+
+Malformed, duplicate, out-of-range, or inverted budget bounds show a visible
+invalid-filter state instead of broadening the results. Applying the filter form
+starts at page one; a next-page link retains valid budget, locality, and property
+type filters with the stable newest-first cursor. Discovery remains limited to
+`PUBLISHED` listings and public fields. M15 adds no schema migration or index.

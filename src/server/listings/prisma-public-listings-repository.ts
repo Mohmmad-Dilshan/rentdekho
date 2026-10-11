@@ -59,12 +59,27 @@ export function createPrismaPublicListingRepository(
   prisma: PrismaClient,
 ): PublicListingRepository {
   return {
-    async findPublishedListings({ localityId, propertyTypeId, cursor, take }) {
+    async findPublishedListings({
+      localityId,
+      propertyTypeId,
+      minRentPaise,
+      maxRentPaise,
+      cursor,
+      take,
+    }) {
       const listings = await prisma.listing.findMany({
         where: {
           status: "PUBLISHED",
           ...(localityId ? { localityId } : {}),
           ...(propertyTypeId ? { propertyTypeId } : {}),
+          ...(minRentPaise !== undefined || maxRentPaise !== undefined
+            ? {
+                rentAmountPaise: {
+                  ...(minRentPaise !== undefined ? { gte: minRentPaise } : {}),
+                  ...(maxRentPaise !== undefined ? { lte: maxRentPaise } : {}),
+                },
+              }
+            : {}),
           ...(cursor
             ? {
                 OR: [

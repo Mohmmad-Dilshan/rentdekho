@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Browse rentals in Bhilwara",
   description:
-    "Browse published rental listings in Bhilwara by locality and property type.",
+    "Browse published rental listings in Bhilwara by locality, property type, and rent budget.",
 };
 
 export default async function RentalsPage({
@@ -34,6 +34,8 @@ export default async function RentalsPage({
   if (query.localityId) nextParams.set("locality", query.localityId);
   if (query.propertyTypeId)
     nextParams.set("propertyType", query.propertyTypeId);
+  if (query.minRent) nextParams.set("minRent", query.minRent);
+  if (query.maxRent) nextParams.set("maxRent", query.maxRent);
   if (nextCursor) nextParams.set("cursor", nextCursor);
 
   return (
@@ -42,7 +44,8 @@ export default async function RentalsPage({
         <p className="eyebrow">Bhilwara rental discovery</p>
         <h1>Browse rentals</h1>
         <p>
-          Explore currently published listings by locality and property type.
+          Explore currently published listings by locality, property type, and
+          rent budget.
         </p>
       </section>
       <PageSection>
@@ -51,7 +54,11 @@ export default async function RentalsPage({
       <PageSection>
         <div className="section-heading">
           <h2>
-            {listings.length > 0 ? "Published rentals" : "No rentals found"}
+            {query.invalidRent
+              ? "Invalid rent filter"
+              : listings.length > 0
+                ? "Published rentals"
+                : "No rentals found"}
           </h2>
           {listings.length > 0 ? <p>Newest listings first.</p> : null}
         </div>
@@ -63,7 +70,11 @@ export default async function RentalsPage({
           </div>
         ) : (
           <div className="empty-state">
-            <p>Try changing or clearing your filters.</p>
+            <p>
+              {query.invalidRent
+                ? "Correct the rent amounts above and apply the filters again."
+                : "Try changing or clearing your filters."}
+            </p>
             <Link className="text-link" href="/rentals">
               Clear filters
             </Link>

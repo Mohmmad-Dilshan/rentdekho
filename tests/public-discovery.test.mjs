@@ -6,6 +6,7 @@ import {
   decodePublicCursor,
   encodePublicCursor,
   parsePublicListingQuery,
+  parsePublicRentBound,
   discoverPublicListings,
   getPublicListingById,
 } from "../src/server/listings/public-discovery.ts";
@@ -26,6 +27,7 @@ const rows = Array.from({ length: 15 }, (_, n) => ({
   createdAt: new Date("2026-09-01"),
   updatedAt: new Date("2026-09-02"),
   title: "Test fixture",
+  rentAmountPaise: BigInt(1_250_000 + n * 50),
   localityId: id(90),
   propertyTypeId: id(91),
   amenities: [],
@@ -46,7 +48,12 @@ function matches(row, where) {
     key === "OR"
       ? value.some((w) => matches(row, w))
       : value && typeof value === "object" && !(value instanceof Date)
-        ? row[key] < value.lt
+        ? Object.entries(value).every(([operator, bound]) => {
+            if (operator === "lt") return row[key] < bound;
+            if (operator === "gte") return row[key] >= bound;
+            if (operator === "lte") return row[key] <= bound;
+            throw new Error(`Unexpected test predicate ${operator}`);
+          })
         : row[key] instanceof Date
           ? +row[key] === +value
           : row[key] === value,
@@ -157,6 +164,140 @@ test("invalid, duplicate and unknown parameters normalize safely", () => {
     parsePublicListingQuery({ locality: ` ${id(90)} ` }).localityId,
     id(90),
   );
+});
+test("rent bounds convert exact rupee strings to paise", () => {
+  assert.equal(parsePublicRentBound(undefined), undefined);
+  assert.equal(parsePublicRentBound(""), undefined);
+  assert.equal(parsePublicRentBound("0.01"), 1n);
+  assert.equal(parsePublicRentBound("12500"), 1_250_000n);
+  assert.equal(parsePublicRentBound("12500.5"), 1_250_050n);
+  assert.equal(parsePublicRentBound("12500.50"), 1_250_050n);
+  assert.equal(parsePublicRentBound("10000000.00"), 1_000_000_000n);
+});
+test("invalid and duplicate rent bounds never silently broaden discovery", async () => {
+  for (const value of [
+    "0",
+    "0.00",
+    "000.00",
+    "-1",
+    "+1",
+    "1e3",
+    " 1",
+    "1 ",
+    "1\t",
+    ".5",
+    "1.",
+    "1.001",
+    "1,000",
+    "10000000.01",
+    "9".repeat(65),
+    ["1", "2"],
+  ]) {
+    assert.equal(parsePublicRentBound(value), null);
+    for (const parameter of ["minRent", "maxRent"]) {
+      const query = parsePublicListingQuery({ [parameter]: value });
+      assert.equal(query.invalidRent, true);
+      const { repository, calls } = setup();
+      assert.deepEqual(await discoverPublicListings(query, repository), {
+        listings: [],
+        nextCursor: undefined,
+      });
+      assert.equal(calls.length, 0);
+    }
+  }
+  const inverted = parsePublicListingQuery({
+    minRent: "12500.51",
+    maxRent: "12500.50",
+  });
+  assert.equal(inverted.invalidRent, true);
+  const { repository, calls } = setup();
+  await discoverPublicListings(inverted, repository);
+  assert.equal(calls.length, 0);
+  assert.equal(
+    parsePublicListingQuery({ maxRent: ["1", "1"] }).invalidRent,
+    true,
+  );
+});
+test("inclusive rent bounds combine with locality and property type", async () => {
+  const { repository, calls } = setup();
+  const query = parsePublicListingQuery({
+    locality: id(90),
+    propertyType: id(91),
+    minRent: "12500.50",
+    maxRent: "12501",
+  });
+  assert.equal(query.invalidRent, undefined);
+  const result = await discoverPublicListings(query, repository);
+  assert.deepEqual(
+    result.listings.map((row) => row.id),
+    [id(29), id(28)],
+  );
+  assert.deepEqual(calls[0].where.rentAmountPaise, {
+    gte: 1_250_050n,
+    lte: 1_250_100n,
+  });
+  assert.equal(calls[0].where.status, "PUBLISHED");
+  assert.equal(calls[0].where.localityId, id(90));
+  assert.equal(calls[0].where.propertyTypeId, id(91));
+
+  const equal = await discoverPublicListings(
+    parsePublicListingQuery({ minRent: "12500.50", maxRent: "12500.50" }),
+    repository,
+  );
+  assert.deepEqual(
+    equal.listings.map((row) => row.id),
+    [id(29)],
+  );
+  const minimumOnly = await discoverPublicListings(
+    parsePublicListingQuery({ minRent: "12507" }),
+    repository,
+  );
+  assert.deepEqual(
+    minimumOnly.listings.map((row) => row.id),
+    [id(16)],
+  );
+  const maximumOnly = await discoverPublicListings(
+    parsePublicListingQuery({ maxRent: "12500" }),
+    repository,
+  );
+  assert.deepEqual(
+    maximumOnly.listings.map((row) => row.id),
+    [id(30)],
+  );
+});
+test("budget and reference filters continue across cursor pages without gaps", async () => {
+  const { repository, calls } = setup();
+  const filters = {
+    locality: id(90),
+    propertyType: id(91),
+    minRent: "12500",
+    maxRent: "12507.00",
+  };
+  const first = await discoverPublicListings(
+    parsePublicListingQuery(filters),
+    repository,
+  );
+  assert.ok(first.nextCursor);
+  const second = await discoverPublicListings(
+    parsePublicListingQuery({ ...filters, cursor: first.nextCursor }),
+    repository,
+  );
+  assert.equal(first.listings.length, 12);
+  assert.equal(second.listings.length, 3);
+  assert.equal(second.nextCursor, undefined);
+  assert.equal(
+    new Set([...first.listings, ...second.listings].map((row) => row.id)).size,
+    15,
+  );
+  for (const call of calls) {
+    assert.equal(call.where.status, "PUBLISHED");
+    assert.equal(call.where.localityId, id(90));
+    assert.equal(call.where.propertyTypeId, id(91));
+    assert.deepEqual(call.where.rentAmountPaise, {
+      gte: 1_250_000n,
+      lte: 1_250_700n,
+    });
+  }
 });
 test("cursor validates date, ID, shape and length", () => {
   for (const value of [
