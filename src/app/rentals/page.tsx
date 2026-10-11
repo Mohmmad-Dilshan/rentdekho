@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Browse rentals in Bhilwara",
   description:
-    "Browse published rental listings in Bhilwara by locality, property type, and rent budget.",
+    "Browse published rental listings in Bhilwara by locality, property type, furnishing, and rent budget.",
 };
 
 export default async function RentalsPage({
@@ -34,6 +34,8 @@ export default async function RentalsPage({
   if (query.localityId) nextParams.set("locality", query.localityId);
   if (query.propertyTypeId)
     nextParams.set("propertyType", query.propertyTypeId);
+  if (query.furnishingStatus)
+    nextParams.set("furnishingStatus", query.furnishingStatus);
   if (query.minRent) nextParams.set("minRent", query.minRent);
   if (query.maxRent) nextParams.set("maxRent", query.maxRent);
   if (nextCursor) nextParams.set("cursor", nextCursor);
@@ -44,8 +46,8 @@ export default async function RentalsPage({
         <p className="eyebrow">Bhilwara rental discovery</p>
         <h1>Browse rentals</h1>
         <p>
-          Explore currently published listings by locality, property type, and
-          rent budget.
+          Explore currently published listings by locality, property type,
+          furnishing, and rent budget.
         </p>
       </section>
       <PageSection>
@@ -54,8 +56,8 @@ export default async function RentalsPage({
       <PageSection>
         <div className="section-heading">
           <h2>
-            {query.invalidRent
-              ? "Invalid rent filter"
+            {query.invalidRent || query.invalidFurnishing
+              ? "Invalid filters"
               : listings.length > 0
                 ? "Published rentals"
                 : "No rentals found"}
@@ -71,8 +73,8 @@ export default async function RentalsPage({
         ) : (
           <div className="empty-state">
             <p>
-              {query.invalidRent
-                ? "Correct the rent amounts above and apply the filters again."
+              {query.invalidRent || query.invalidFurnishing
+                ? "Correct the filters above and apply them again."
                 : "Try changing or clearing your filters."}
             </p>
             <Link className="text-link" href="/rentals">

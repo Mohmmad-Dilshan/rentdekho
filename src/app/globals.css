@@ -263,7 +263,8 @@ dt {
   color: #9b2525;
   font-weight: 650;
 }
-.rental-filters input[aria-invalid="true"] {
+.rental-filters input[aria-invalid="true"],
+.rental-filters select[aria-invalid="true"] {
   border-color: #9b2525;
 }
 .empty-state {
@@ -325,7 +326,7 @@ dt {
 }
 @media (min-width: 75rem) {
   .rental-filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
   }
   .rental-filters button {
     grid-column: auto;

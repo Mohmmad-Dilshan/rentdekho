@@ -7,6 +7,7 @@ import {
   encodePublicCursor,
   parsePublicListingQuery,
   parsePublicRentBound,
+  parsePublicFurnishingStatus,
   discoverPublicListings,
   getPublicListingById,
 } from "../src/server/listings/public-discovery.ts";
@@ -28,6 +29,7 @@ const rows = Array.from({ length: 15 }, (_, n) => ({
   updatedAt: new Date("2026-09-02"),
   title: "Test fixture",
   rentAmountPaise: BigInt(1_250_000 + n * 50),
+  furnishingStatus: ["UNFURNISHED", "SEMI_FURNISHED", "FURNISHED"][n % 3],
   localityId: id(90),
   propertyTypeId: id(91),
   amenities: [],
@@ -164,6 +166,70 @@ test("invalid, duplicate and unknown parameters normalize safely", () => {
     parsePublicListingQuery({ locality: ` ${id(90)} ` }).localityId,
     id(90),
   );
+});
+test("furnishing accepts only the existing exact enum values", () => {
+  assert.equal(parsePublicFurnishingStatus(undefined), undefined);
+  assert.equal(parsePublicFurnishingStatus(""), undefined);
+  for (const value of ["UNFURNISHED", "SEMI_FURNISHED", "FURNISHED"]) {
+    assert.equal(parsePublicFurnishingStatus(value), value);
+    assert.equal(
+      parsePublicListingQuery({ furnishingStatus: value }).furnishingStatus,
+      value,
+    );
+  }
+});
+test("invalid or duplicate furnishing never broadens discovery", async () => {
+  for (const value of [
+    "FURNISHED ",
+    "furnished",
+    "UNKNOWN",
+    "PUBLISHED",
+    " ",
+    ["FURNISHED", "UNFURNISHED"],
+    ["FURNISHED", "FURNISHED"],
+  ]) {
+    assert.equal(parsePublicFurnishingStatus(value), null);
+    const query = parsePublicListingQuery({ furnishingStatus: value });
+    assert.equal(query.invalidFurnishing, true);
+    const { repository, calls } = setup();
+    assert.deepEqual(await discoverPublicListings(query, repository), {
+      listings: [],
+      nextCursor: undefined,
+    });
+    assert.equal(calls.length, 0);
+  }
+  const { repository, calls } = setup();
+  await discoverPublicListings({ furnishingStatus: "UNKNOWN" }, repository);
+  assert.equal(calls.length, 0);
+});
+test("furnishing combines with locality, property type and rent bounds", async () => {
+  for (const furnishingStatus of [
+    "UNFURNISHED",
+    "SEMI_FURNISHED",
+    "FURNISHED",
+  ]) {
+    const { repository, calls } = setup();
+    const query = parsePublicListingQuery({
+      locality: id(90),
+      propertyType: id(91),
+      minRent: "12500",
+      maxRent: "12507",
+      furnishingStatus,
+    });
+    const result = await discoverPublicListings(query, repository);
+    assert.equal(result.listings.length, 5);
+    assert.ok(
+      result.listings.every((row) => row.furnishingStatus === furnishingStatus),
+    );
+    assert.equal(calls[0].where.furnishingStatus, furnishingStatus);
+    assert.equal(calls[0].where.status, "PUBLISHED");
+    assert.equal(calls[0].where.localityId, id(90));
+    assert.equal(calls[0].where.propertyTypeId, id(91));
+    assert.deepEqual(calls[0].where.rentAmountPaise, {
+      gte: 1_250_000n,
+      lte: 1_250_700n,
+    });
+  }
 });
 test("rent bounds convert exact rupee strings to paise", () => {
   assert.equal(parsePublicRentBound(undefined), undefined);

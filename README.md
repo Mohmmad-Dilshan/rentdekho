@@ -301,3 +301,13 @@ invalid-filter state instead of broadening the results. Applying the filter form
 starts at page one; a next-page link retains valid budget, locality, and property
 type filters with the stable newest-first cursor. Discovery remains limited to
 `PUBLISHED` listings and public fields. M15 adds no schema migration or index.
+
+## M16 furnishing filter
+
+The public `/rentals` GET page also accepts one optional `furnishingStatus` value:
+`UNFURNISHED`, `SEMI_FURNISHED`, or `FURNISHED`. An absent or empty value shows
+all furnishing types. Invalid or duplicate values show a visible error and never
+run a broadened listing query. Furnishing combines with locality, property type,
+and both rent bounds; the form starts at page one and the next-page link retains
+all active valid filters. Only published listings appear. M16 changes no schema
+or index.

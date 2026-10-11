@@ -117,6 +117,7 @@ test("M15 disposable PostgreSQL rent filtering and public discovery", async (t) 
       status = "PUBLISHED",
       localityId = mainLocality.id,
       propertyTypeId = mainType.id,
+      furnishingStatus = "UNFURNISHED",
     ) {
       return prisma.listing.create({
         data: {
@@ -126,6 +127,7 @@ test("M15 disposable PostgreSQL rent filtering and public discovery", async (t) 
           title: "M15 " + label + " " + unique,
           status,
           rentAmountPaise,
+          furnishingStatus,
           createdAt,
         },
       });
@@ -261,6 +263,121 @@ test("M15 disposable PostgreSQL rent filtering and public discovery", async (t) 
     assert.equal("contactConsentAt" in publishedDetail, false);
     for (const listing of [...nonpublished, hiddenOnly])
       assert.equal(await getPublicListingById(listing.id, repository), null);
+
+    const furnished = [];
+    for (let index = 0; index < 15; index++)
+      furnished.push(
+        await createListing(
+          "furnished " + index,
+          1700000n,
+          "PUBLISHED",
+          mainLocality.id,
+          mainType.id,
+          "FURNISHED",
+        ),
+      );
+    const semi = await createListing(
+      "semi furnished",
+      1700000n,
+      "PUBLISHED",
+      mainLocality.id,
+      mainType.id,
+      "SEMI_FURNISHED",
+    );
+    const hiddenFurnished = await createListing(
+      "hidden furnished",
+      1700000n,
+      "PENDING_REVIEW",
+      mainLocality.id,
+      mainType.id,
+      "FURNISHED",
+    );
+    const otherLocalityFurnished = await createListing(
+      "other locality furnished",
+      1700000n,
+      "PUBLISHED",
+      otherLocality.id,
+      mainType.id,
+      "FURNISHED",
+    );
+    const otherTypeFurnished = await createListing(
+      "other type furnished",
+      1700000n,
+      "PUBLISHED",
+      mainLocality.id,
+      otherType.id,
+      "FURNISHED",
+    );
+    const furnishedQuery = parsePublicListingQuery({
+      locality: mainLocality.id,
+      propertyType: mainType.id,
+      furnishingStatus: "FURNISHED",
+      minRent: "17000",
+      maxRent: "17000",
+    });
+    const furnishedFirst = await discoverPublicListings(
+      furnishedQuery,
+      repository,
+    );
+    assert.equal(furnishedFirst.listings.length, 12);
+    assert.ok(furnishedFirst.nextCursor);
+    const furnishedSecond = await discoverPublicListings(
+      { ...furnishedQuery, cursor: furnishedFirst.nextCursor },
+      repository,
+    );
+    assert.equal(furnishedSecond.listings.length, 3);
+    assert.equal(furnishedSecond.nextCursor, undefined);
+    const furnishedIds = [
+      ...furnishedFirst.listings,
+      ...furnishedSecond.listings,
+    ].map((listing) => listing.id);
+    const expectedFurnished = await prisma.listing.findMany({
+      where: { id: { in: furnished.map((listing) => listing.id) } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { id: true },
+    });
+    assert.deepEqual(
+      furnishedIds,
+      expectedFurnished.map((listing) => listing.id),
+    );
+    assert.equal(new Set(furnishedIds).size, 15);
+    for (const excluded of [
+      semi,
+      hiddenFurnished,
+      otherLocalityFurnished,
+      otherTypeFurnished,
+    ])
+      assert.equal(furnishedIds.includes(excluded.id), false);
+    assert.ok(
+      [...furnishedFirst.listings, ...furnishedSecond.listings].every(
+        (listing) => listing.furnishingStatus === "FURNISHED",
+      ),
+    );
+    const semiResult = await discoverPublicListings(
+      parsePublicListingQuery({
+        locality: mainLocality.id,
+        propertyType: mainType.id,
+        furnishingStatus: "SEMI_FURNISHED",
+        minRent: "17000",
+        maxRent: "17000",
+      }),
+      repository,
+    );
+    assert.deepEqual(
+      semiResult.listings.map((listing) => listing.id),
+      [semi.id],
+    );
+    const unfurnishedResult = await discoverPublicListings(
+      parsePublicListingQuery({
+        locality: mainLocality.id,
+        propertyType: mainType.id,
+        furnishingStatus: "UNFURNISHED",
+        minRent: "17000",
+        maxRent: "17000",
+      }),
+      repository,
+    );
+    assert.equal(unfurnishedResult.listings.length, 0);
 
     const options = await repository.findPublicDiscoveryFilters();
     for (const locality of [mainLocality, otherLocality])

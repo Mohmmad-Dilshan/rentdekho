@@ -2,6 +2,7 @@ import type {
   PublicDiscoveryFilters,
   PublicListingQuery,
 } from "../server/listings/public-discovery";
+import { publicFurnishingStatuses } from "../server/listings/public-discovery";
 
 export function RentalFilters({
   filters,
@@ -38,6 +39,25 @@ export function RentalFilters({
           {filters.propertyTypes.map((propertyType) => (
             <option key={propertyType.id} value={propertyType.id}>
               {propertyType.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="furnishingStatus">Furnishing</label>
+        <select
+          id="furnishingStatus"
+          name="furnishingStatus"
+          defaultValue={query.furnishingStatus ?? ""}
+          aria-invalid={query.invalidFurnishing || undefined}
+          aria-describedby={
+            query.invalidFurnishing ? "furnishing-filter-error" : undefined
+          }
+        >
+          <option value="">All furnishing types</option>
+          {publicFurnishingStatuses.map((status) => (
+            <option key={status} value={status}>
+              {status.replaceAll("_", " ").toLowerCase()}
             </option>
           ))}
         </select>
@@ -93,6 +113,16 @@ export function RentalFilters({
         >
           Invalid rent filter. Enter positive amounts up to ₹1,00,00,000 with at
           most two decimal places, and keep the minimum at or below the maximum.
+        </p>
+      ) : null}
+      {query.invalidFurnishing ? (
+        <p
+          className="rental-filters__error"
+          id="furnishing-filter-error"
+          role="alert"
+        >
+          Invalid furnishing filter. Choose one of the available furnishing
+          types.
         </p>
       ) : null}
     </form>

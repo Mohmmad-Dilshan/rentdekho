@@ -62,6 +62,7 @@ export function createPrismaPublicListingRepository(
     async findPublishedListings({
       localityId,
       propertyTypeId,
+      furnishingStatus,
       minRentPaise,
       maxRentPaise,
       cursor,
@@ -72,6 +73,7 @@ export function createPrismaPublicListingRepository(
           status: "PUBLISHED",
           ...(localityId ? { localityId } : {}),
           ...(propertyTypeId ? { propertyTypeId } : {}),
+          ...(furnishingStatus ? { furnishingStatus } : {}),
           ...(minRentPaise !== undefined || maxRentPaise !== undefined
             ? {
                 rentAmountPaise: {

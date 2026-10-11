@@ -295,3 +295,15 @@ the existing `PUBLISHED` condition and newest-first keyset cursor. Applying the
 GET filter form starts at page one; next-page links retain valid budget, locality,
 and property-type filters. Public selects continue to exclude private fields.
 M15 adds no migration or index.
+
+## M16 furnishing filter
+
+The public discovery parser accepts only the existing `FurnishingStatus` values
+`UNFURNISHED`, `SEMI_FURNISHED`, and `FURNISHED`, with an absent or empty value
+meaning no furnishing constraint. Invalid or duplicate values set a visible
+error state and prevent the listing read, rather than broadening results. The
+Prisma public repository combines an exact furnishing match with `PUBLISHED`,
+locality, property type, inclusive rent bounds, and the unchanged keyset cursor.
+The GET form resets pagination, while next-page links retain valid filters.
+Public projections and consented contact rules stay unchanged. No migration or
+index is added.

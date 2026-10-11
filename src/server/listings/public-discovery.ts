@@ -1,4 +1,10 @@
 export const publicListingPageSize = 12;
+export const publicFurnishingStatuses = [
+  "UNFURNISHED",
+  "SEMI_FURNISHED",
+  "FURNISHED",
+] as const;
+export type PublicFurnishingStatus = (typeof publicFurnishingStatuses)[number];
 export const publicRentMaximumRupees = BigInt(10_000_000);
 const publicRentMaximumPaise = publicRentMaximumRupees * BigInt(100);
 export type PublicCursor = { createdAt: Date; id: string };
@@ -39,6 +45,8 @@ type SearchParamValue = string | string[] | undefined;
 export type PublicListingQuery = {
   localityId?: string;
   propertyTypeId?: string;
+  furnishingStatus?: string;
+  invalidFurnishing?: boolean;
   minRent?: string;
   maxRent?: string;
   invalidRent?: boolean;
@@ -78,6 +86,7 @@ export type PublicListingRepository = {
   findPublishedListings(input: {
     localityId?: string;
     propertyTypeId?: string;
+    furnishingStatus?: PublicFurnishingStatus;
     minRentPaise?: bigint;
     maxRentPaise?: bigint;
     cursor?: PublicCursor;
@@ -98,6 +107,16 @@ function parseIdentifier(value: SearchParamValue) {
   return normalized && /^[a-z0-9]{10,36}$/.test(normalized)
     ? normalized
     : undefined;
+}
+
+export function parsePublicFurnishingStatus(
+  value: SearchParamValue,
+): PublicFurnishingStatus | null | undefined {
+  if (value === undefined || value === "") return undefined;
+  return typeof value === "string" &&
+    publicFurnishingStatuses.some((status) => status === value)
+    ? (value as PublicFurnishingStatus)
+    : null;
 }
 
 export function parsePublicRentBound(
@@ -122,6 +141,9 @@ export function parsePublicListingQuery(
 ): PublicListingQuery {
   const minRent = parsePublicRentBound(searchParams.minRent);
   const maxRent = parsePublicRentBound(searchParams.maxRent);
+  const furnishingStatus = parsePublicFurnishingStatus(
+    searchParams.furnishingStatus,
+  );
   const invalidRent =
     minRent === null ||
     maxRent === null ||
@@ -130,6 +152,8 @@ export function parsePublicListingQuery(
   return {
     localityId: parseIdentifier(searchParams.locality),
     propertyTypeId: parseIdentifier(searchParams.propertyType),
+    ...(furnishingStatus ? { furnishingStatus } : {}),
+    ...(furnishingStatus === null ? { invalidFurnishing: true } : {}),
     ...(typeof searchParams.minRent === "string"
       ? { minRent: searchParams.minRent.slice(0, 64) }
       : {}),
@@ -149,8 +173,11 @@ export async function discoverPublicListings(
 ) {
   const minRentPaise = parsePublicRentBound(query.minRent);
   const maxRentPaise = parsePublicRentBound(query.maxRent);
+  const furnishingStatus = parsePublicFurnishingStatus(query.furnishingStatus);
   if (
     query.invalidRent ||
+    query.invalidFurnishing ||
+    furnishingStatus === null ||
     minRentPaise === null ||
     maxRentPaise === null ||
     (minRentPaise !== undefined &&
@@ -162,6 +189,7 @@ export async function discoverPublicListings(
   const listings = await repository.findPublishedListings({
     localityId: parseIdentifier(query.localityId),
     propertyTypeId: parseIdentifier(query.propertyTypeId),
+    furnishingStatus,
     minRentPaise,
     maxRentPaise,
     cursor: decodePublicCursor(query.cursor),

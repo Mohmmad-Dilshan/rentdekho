@@ -1072,6 +1072,142 @@ test(
         },
       );
 
+      await t.test(
+        "M16 furnishing filters published results and preserves all filters on desktop and 375px",
+        async () => {
+          await prisma.listing.createMany({
+            data: [
+              ...Array.from({ length: 14 }, (_, index) => ({
+                ownerId: owner.id,
+                localityId,
+                propertyTypeId,
+                title: `M16 furnished ${suffix} ${index}`,
+                status: "PUBLISHED",
+                furnishingStatus: "FURNISHED",
+                rentAmountPaise: 1800000n,
+              })),
+              {
+                ownerId: owner.id,
+                localityId,
+                propertyTypeId,
+                title: `M16 semi ${suffix}`,
+                status: "PUBLISHED",
+                furnishingStatus: "SEMI_FURNISHED",
+                rentAmountPaise: 1800000n,
+              },
+              {
+                ownerId: owner.id,
+                localityId,
+                propertyTypeId,
+                title: `M16 hidden ${suffix}`,
+                status: "PENDING_REVIEW",
+                furnishingStatus: "FURNISHED",
+                rentAmountPaise: 1800000n,
+              },
+            ],
+          });
+          const expectedIds = (
+            await prisma.listing.findMany({
+              where: {
+                ownerId: owner.id,
+                title: { startsWith: `M16 furnished ${suffix}` },
+              },
+              select: { id: true },
+            })
+          )
+            .map(({ id }) => id)
+            .sort();
+          assert.equal(expectedIds.length, 14);
+
+          async function cardIds(page) {
+            return page
+              .locator(".listing-card h2 a")
+              .evaluateAll((links) =>
+                links.map((link) =>
+                  link.getAttribute("href").split("/").at(-1),
+                ),
+              );
+          }
+
+          for (const width of [1280, 375]) {
+            const page = await anonymous.newPage();
+            try {
+              await page.setViewportSize({ width, height: 900 });
+              await page.goto(
+                `${origin}/rentals?locality=${localityId}&propertyType=${propertyTypeId}`,
+              );
+              await page
+                .locator('[name="furnishingStatus"]')
+                .selectOption("FURNISHED");
+              await page.locator('[name="minRent"]').fill("18000");
+              await page.locator('[name="maxRent"]').fill("18000");
+              await page
+                .getByRole("button", { name: "Apply filters", exact: true })
+                .click();
+              await page.waitForURL(
+                (url) =>
+                  url.searchParams.get("furnishingStatus") === "FURNISHED" &&
+                  !url.searchParams.has("cursor"),
+              );
+              const firstIds = await cardIds(page);
+              assert.equal(firstIds.length, 12);
+              await noOverflow(page);
+              const next = page.getByRole("link", {
+                name: "Show more rentals",
+              });
+              const nextUrl = new URL(await next.getAttribute("href"), origin);
+              for (const [key, value] of [
+                ["locality", localityId],
+                ["propertyType", propertyTypeId],
+                ["furnishingStatus", "FURNISHED"],
+                ["minRent", "18000"],
+                ["maxRent", "18000"],
+              ])
+                assert.equal(nextUrl.searchParams.get(key), value);
+              assert.ok(nextUrl.searchParams.get("cursor"));
+              await next.click();
+              await page.waitForURL(
+                (url) =>
+                  url.searchParams.get("cursor") ===
+                  nextUrl.searchParams.get("cursor"),
+              );
+              assert.equal(
+                await page.locator('[name="furnishingStatus"]').inputValue(),
+                "FURNISHED",
+              );
+              const secondIds = await cardIds(page);
+              assert.equal(secondIds.length, 2);
+              assert.deepEqual([...firstIds, ...secondIds].sort(), expectedIds);
+              assert.equal(await next.count(), 0);
+              await noOverflow(page);
+
+              await page
+                .getByRole("button", { name: "Apply filters", exact: true })
+                .click();
+              await page.waitForURL(
+                (url) =>
+                  !url.searchParams.has("cursor") &&
+                  url.searchParams.get("furnishingStatus") === "FURNISHED",
+              );
+              assert.deepEqual(await cardIds(page), firstIds);
+
+              await page.goto(
+                `${origin}/rentals?furnishingStatus=FURNISHED&furnishingStatus=UNFURNISHED`,
+              );
+              await page
+                .getByRole("alert")
+                .filter({ hasText: /Invalid furnishing filter/ })
+                .waitFor();
+              assert.equal(await page.locator(".listing-card").count(), 0);
+              assert.equal(await next.count(), 0);
+              await noOverflow(page);
+            } finally {
+              await page.close();
+            }
+          }
+        },
+      );
+
       assert.deepEqual(runtimeErrors, [], "No browser runtime errors");
     } finally {
       // Cleanup only records belonging to this run's unique fixture identities.
